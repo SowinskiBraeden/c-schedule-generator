@@ -4,11 +4,8 @@
 #include <stdbool.h>
 
 /*
-  We define the constants here so the the processor
-  replaces the var name with the actual value to prevent
-  "Variable modified error during compile"
-  - give me a break I am learning and need this note to
-  tell me why I am doing this
+  Using define instead of constants prevents
+  "Variable modified error"
 */
 #define MAX_COURSE_DES_LEN 50
 #define MAX_COURSE_NO_LEN 20
@@ -93,14 +90,12 @@ CSV_LINE *csvReader(char data_dir[]) {
 
 /*** DEFINE STUDENT DATA STRUCTURES & COURSE DATA STRUCTURES***/
 
-// REQUEST
 typedef struct {
   char crsNo[MAX_COURSE_NO_LEN];
   char description[MAX_COURSE_DES_LEN];
   bool alt;
 } REQUEST;
 
-// STUDENT
 typedef struct {
   char pupilNum[MAX_PUPIL_NUM_LEN];
   REQUEST request[TOTAL_BLOCKS + MAX_REQUEST_ALTS];
@@ -111,7 +106,6 @@ typedef struct {
   short studentIndex;
 } STUDENT;
 
-// COURSE
 typedef struct {
   char crsNo[MAX_COURSE_NO_LEN];
   short requests;
@@ -142,7 +136,7 @@ int main(int argc, char **argv) {
   CSV_LINE *lines = csvReader(data_dir);
   if (lines == NULL) return -1;
 
-  STUDENT *students = getStudents("../sample_data/course_selection_data.csv", TOTAL_BLOCKS);
+  STUDENT *students = getStudents(lines, TOTAL_BLOCKS);
   if (students == NULL) return -1;
 
   free(lines);
