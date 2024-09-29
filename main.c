@@ -4,9 +4,11 @@
 #include <stdbool.h>
 
 /*
-  We use define the constants here so the the processor
+  We define the constants here so the the processor
   replaces the var name with the actual value to prevent
-  Variable modified error during compile
+  "Variable modified error during compile"
+  - give me a break I am learning and need this note to
+  tell me why I am doing this
 */
 #define MAX_COURSE_DES_LEN 50
 #define MAX_COURSE_NO_LEN 20
@@ -20,7 +22,7 @@
 
 #define MAX_CHAR 85 // MAX_PUPIL_NUM_LEN + ',' + MAX_COURSE_NO_LEN + ',' + MAX_COURSE_DES_LEN, + ',' + 5 (5 is the number of characters in the word "FALSE")
 
-/*** DEFINE CSV READER FUNCTIONS ***/
+/*** DEFINE CSV READER FUNCTIONS & DATASTRUCTURES ***/
 
 typedef struct {
   char pupilNum[MAX_PUPIL_NUM_LEN];
@@ -89,14 +91,16 @@ CSV_LINE *csvReader(char data_dir[]) {
   return lines;
 }
 
-/*** DEFINE STUDENT DATA STRUCTURES ***/
+/*** DEFINE STUDENT DATA STRUCTURES & COURSE DATA STRUCTURES***/
 
+// REQUEST
 typedef struct {
   char crsNo[MAX_COURSE_NO_LEN];
   char description[MAX_COURSE_DES_LEN];
   bool alt;
 } REQUEST;
 
+// STUDENT
 typedef struct {
   char pupilNum[MAX_PUPIL_NUM_LEN];
   REQUEST request[TOTAL_BLOCKS + MAX_REQUEST_ALTS];
@@ -107,8 +111,7 @@ typedef struct {
   short studentIndex;
 } STUDENT;
 
-/*** DEFINE COURSE DATA STRUCTURE ***/
-
+// COURSE
 typedef struct {
   char crsNo[MAX_COURSE_NO_LEN];
   short requests;
@@ -120,12 +123,12 @@ typedef struct {
 
 /*** DEFINE GET FUNCTIONS FOR STUDENTS & COURSES FROM CSV ***/
 
-STUDENT *getStudents(char *data_dir, int total_blocks) {
+STUDENT *getStudents(CSV_LINE *lines, int total_blocks) {
   return NULL;
 }
 
-void getCourses() {
-  return;
+COURSE *getCourses(CSV_LINE *lines) {
+  return NULL;
 }
 
 int main(int argc, char **argv) {
