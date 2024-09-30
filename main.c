@@ -9,7 +9,7 @@
 */
 #define MAX_COURSE_DES_LEN 50
 #define MAX_COURSE_NO_LEN 20
-#define MAX_PUPIL_NUM_LEN 7
+#define MAX_PUPIL_NUM_LEN 8
 
 #define TOTAL_BLOCKS 10 // the number of blocks between 2 semesters i.e 8 = 4 blocks per semester, 10 = 5 blocks per semester
 #define MAX_REQUEST_ALTS 6
@@ -28,19 +28,10 @@ typedef struct {
   bool alternate;
 } CSV_LINE;
 
-const char* getField(char *line, int num) {
-  const char* tok;
-  for (tok = strtok(line, ","); tok && *tok; tok = strtok(NULL, ",\n")) {
-    if (!--num)
-      return tok;
-  }
-  return NULL;
-}
-
-int count_lines(char data_dir[]) {
+size_t count_lines(char data_dir[]) {
   FILE *stream = fopen(data_dir, "r");
   char buff[MAX_CHAR];
-  int counter = 0;
+  size_t counter = 0;
   for (;;) {
     size_t res = fread(buff, 1, MAX_CHAR, stream);
     if (ferror(stream))
@@ -55,36 +46,53 @@ int count_lines(char data_dir[]) {
       break;
   }
 
+  fclose(stream);
   return counter;
 }
 
-CSV_LINE *csvReader(char data_dir[]) {
-  int num_lines = count_lines(data_dir) + 1;
-  if (num_lines == -1) {
-    fputs("Failed to read number of lines in the given CSV file!\n", stderr);
-    return NULL;
-  }
+CSV_LINE *csvReader(char data_dir[], size_t size) {
 
   FILE *stream = fopen(data_dir, "r");
-
-  CSV_LINE *lines = malloc(num_lines * sizeof(CSV_LINE));
-  if (lines == NULL) {
-    fputs("Failed to allocate memory!\n", stderr);
+  if (!stream) {
+    fputs("Failed to open CSV file", stderr);
     return NULL;
   }
 
-  int i = 0;
+  CSV_LINE *lines = malloc(size * sizeof(CSV_LINE));
+
   char buff[MAX_CHAR];
-  while (fgets(buff, sizeof(buff), stream) != NULL) {
+  int i = 0;
+
+  // Read each line in CSV file
+  while (fgets(buff, sizeof(buff), stream) && i < size) {
     CSV_LINE csv_line;
-    strcpy(csv_line.pupilNum, getField(strdup(buff), 1));
-    strcpy(csv_line.crsNo, getField(strdup(buff), 2));
-    strcpy(csv_line.description, getField(strdup(buff), 3));
-    csv_line.alternate = strcmp(getField(strdup(buff), 4), "TRUE") ? true : false;
     lines[i] = csv_line;
+
+    // Tokenize the line to extract data
+    char *token = strtok(buff, ",");
+    if (token) {
+      strncpy(lines[i].pupilNum, token, MAX_PUPIL_NUM_LEN);
+      // lines[i].pupilNum[strcspn(lines[i].pupilNum, "\n")] = 0; // Remove newline
+    }
+
+    token = strtok(NULL, ",");
+    if (token) strncpy(lines[i].crsNo, token, MAX_COURSE_NO_LEN);
+
+    token = strtok(NULL, ",");
+    if (token) strncpy(lines[i].description, token, MAX_COURSE_DES_LEN);
+
+    token = strtok(NULL, ",");
+    if (token) {
+      char alternate[5];
+      strncpy(alternate, token, 5);
+      alternate[strcspn(alternate, "\n")] = 0; // Remove newline
+      lines[i].alternate = strcmp(alternate, "TRUE") == 0 ? true : false;
+    }
+
     i++;
   }
 
+  fclose(stream);
   return lines;
 }
 
@@ -117,8 +125,11 @@ typedef struct {
 
 /*** DEFINE GET FUNCTIONS FOR STUDENTS & COURSES FROM CSV ***/
 
-STUDENT *getStudents(CSV_LINE *lines, int total_blocks) {
+STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks) {
   return NULL;
+  // for (size_t i = 0; i < lines_len; i++) {
+    
+  // }
 }
 
 COURSE *getCourses(CSV_LINE *lines) {
@@ -131,12 +142,19 @@ int main(int argc, char **argv) {
     read csv data into array of structs that can
     be processed into an array of student structs
     and an array of course structs
-  */  
+  */
   char data_dir[] = "sample_data/course_selection_data.csv";
-  CSV_LINE *lines = csvReader(data_dir);
+  
+  size_t num_lines = count_lines(data_dir);
+  if (num_lines == -1) {
+    fputs("Failed to read number of lines in the given CSV file!\n", stderr);
+    return -1;
+  }
+  
+  CSV_LINE *lines = csvReader(data_dir, num_lines);
   if (lines == NULL) return -1;
 
-  STUDENT *students = getStudents(lines, TOTAL_BLOCKS);
+  STUDENT *students = getStudents(lines, num_lines, TOTAL_BLOCKS);
   if (students == NULL) return -1;
 
   free(lines);
