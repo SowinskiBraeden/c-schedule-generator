@@ -2,34 +2,44 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 /*
   Using define instead of constants prevents
   "Variable modified error"
 */
+// Important constants
+#define MAX_PUPIL_NUM_LEN 8
 #define MAX_COURSE_DES_LEN 50
 #define MAX_COURSE_NO_LEN 20
-#define MAX_PUPIL_NUM_LEN 8
+#define MAX_COURSE_ID_LEN MAX_COURSE_NO_LEN + 4 // 4 includes the underscore and the 3 digit unique number to identify the course
 
 #define TOTAL_BLOCKS 10 // the number of blocks between 2 semesters i.e 8 = 4 blocks per semester, 10 = 5 blocks per semester
 #define MAX_REQUEST_ALTS 6
 #define CLASSROOMS 40
 #define MIN_REQ 18
 #define CLASS_CAP 30
+#define MAX_STUDENTS CLASS_CAP * CLASSROOMS
 
-#define MAX_CHAR 85 // MAX_PUPIL_NUM_LEN + ',' + MAX_COURSE_NO_LEN + ',' + MAX_COURSE_DES_LEN, + ',' + 5 (5 is the number of characters in the word "FALSE")
+// 5 is the length of "FALSE" & 3 is the number of commas per line
+#define MAX_CHAR MAX_PUPIL_NUM_LEN + MAX_COURSE_NO_LEN + MAX_COURSE_DES_LEN + 5 + 3
 
 /*** DEFINE CSV READER FUNCTIONS & DATASTRUCTURES ***/
 
 typedef struct {
-  char pupilNum[MAX_PUPIL_NUM_LEN];
+  uint32_t pupilNum;
   char crsNo[MAX_COURSE_NO_LEN];
   char description[MAX_COURSE_DES_LEN];
   bool alternate;
 } CSV_LINE;
 
-size_t count_lines(char data_dir[]) {
+// Dumbass me set this to size_t earlier, forgot that size_t is unsigned and I can't return -1 on failure
+int count_lines(char data_dir[]) {
   FILE *stream = fopen(data_dir, "r");
+  if (!stream) {
+    fputs("Failed to open CSV file", stderr);
+    return -1;
+  }
   char buff[MAX_CHAR];
   size_t counter = 0;
   for (;;) {
@@ -64,29 +74,29 @@ CSV_LINE *csvReader(char data_dir[], size_t size) {
   int i = 0;
 
   // Read each line in CSV file
-  while (fgets(buff, sizeof(buff), stream) && i < size) {
+  while (fgets(buff, sizeof(buff), stream) && i <= size) {
     CSV_LINE csv_line;
     lines[i] = csv_line;
 
     // Tokenize the line to extract data
     char *token = strtok(buff, ",");
-    if (token) {
-      strncpy(lines[i].pupilNum, token, MAX_PUPIL_NUM_LEN);
-      // lines[i].pupilNum[strcspn(lines[i].pupilNum, "\n")] = 0; // Remove newline
-    }
+    if (token)
+      lines[i].pupilNum = atoi(token); // convert string to uint32_t
+    
+    token = strtok(NULL, ",");
+    if (token)
+      strncpy(lines[i].crsNo, token, MAX_COURSE_NO_LEN);
 
     token = strtok(NULL, ",");
-    if (token) strncpy(lines[i].crsNo, token, MAX_COURSE_NO_LEN);
-
-    token = strtok(NULL, ",");
-    if (token) strncpy(lines[i].description, token, MAX_COURSE_DES_LEN);
+    if (token)
+      strncpy(lines[i].description, token, MAX_COURSE_DES_LEN);
 
     token = strtok(NULL, ",");
     if (token) {
       char alternate[5];
       strncpy(alternate, token, 5);
       alternate[strcspn(alternate, "\n")] = 0; // Remove newline
-      lines[i].alternate = strcmp(alternate, "TRUE") == 0 ? true : false;
+      lines[i].alternate = !strcmp(alternate, "TRUE") ? true : false;
     }
 
     i++;
@@ -101,38 +111,104 @@ CSV_LINE *csvReader(char data_dir[], size_t size) {
 typedef struct {
   char crsNo[MAX_COURSE_NO_LEN];
   char description[MAX_COURSE_DES_LEN];
-  bool alt;
+  bool alternate;
 } REQUEST;
 
 typedef struct {
-  char pupilNum[MAX_PUPIL_NUM_LEN];
-  REQUEST request[TOTAL_BLOCKS + MAX_REQUEST_ALTS];
-  char schedule[TOTAL_BLOCKS]; // blocks 1 through (TOTAL_BLOCKS / 2) represents the first semester in this array
-  short expectedClasses;
-  short classes;
-  REQUEST remainingAlts[MAX_REQUEST_ALTS];
-  short studentIndex;
+  uint32_t pupilNum;
+  REQUEST *requests;
+  uint8_t requestsLen;
+  char **schedule;
+  uint8_t expectedClasses;
+  uint8_t classes;
+  REQUEST *remainingAlts;
+  uint8_t remainingAltsLen;
+  uint8_t grade;
 } STUDENT;
 
 typedef struct {
   char crsNo[MAX_COURSE_NO_LEN];
-  short requests;
+  uint16_t requests;
   char description[MAX_COURSE_DES_LEN];
-  short credits;
-  bool core; // Is this a core class? prioritize this course over alternates
-  STUDENT students[CLASS_CAP];
+  uint8_t credits;
+  char students[CLASS_CAP][sizeof(uint32_t)];
 } COURSE;
 
 /*** DEFINE GET FUNCTIONS FOR STUDENTS & COURSES FROM CSV ***/
 
+bool valueInArray(uint32_t val, uint32_t *arr, size_t n) {
+  for (size_t i = 0; i < n; i++) 
+    if (arr[i] == val)
+      return true;
+  return false;
+}
+
 STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks) {
-  return NULL;
-  // for (size_t i = 0; i < lines_len; i++) {
+  // Find the number of unique students and the number of their requests
+  uint32_t tmpPupilNums[MAX_STUDENTS];
+  uint8_t numRequests[MAX_STUDENTS];
+  for (size_t i = 0; i <= MAX_STUDENTS; i++)
+    numRequests[i] = 0;
+  uint16_t pupilNumCount = 0;
+  uint16_t currentPupilNum;
+  for (size_t i = 0; i <= lines_len; i++) {
+    currentPupilNum = lines[i].pupilNum;
+    bool exists = valueInArray(lines[i].pupilNum, tmpPupilNums, sizeof(tmpPupilNums)/sizeof(uint32_t));
+    if (sizeof(tmpPupilNums) == 0 || !exists) {
+      tmpPupilNums[pupilNumCount] = lines[i].pupilNum;
+      pupilNumCount++;
+    }
+    numRequests[pupilNumCount - 1]++;
+  }
+
+  // Create our student array with the correct number of students 
+  STUDENT *students = malloc(pupilNumCount * sizeof(STUDENT));
+  for (uint16_t i = 0; i <= pupilNumCount; i++) {
+    STUDENT student;
     
-  // }
+    student.pupilNum = tmpPupilNums[i];
+    student.expectedClasses = 0;
+    student.classes = 0;
+    student.grade = 0;
+    student.requestsLen = 0;
+    student.remainingAltsLen = 0;
+
+    REQUEST *requests = malloc(numRequests[i] * sizeof(REQUEST));
+    student.requests = requests;
+
+    char **schedule = malloc(TOTAL_BLOCKS * sizeof(int*));
+    for (int j = 0; j < TOTAL_BLOCKS; j++) schedule[j] = malloc(MAX_COURSE_ID_LEN);
+    student.schedule = schedule;
+
+    REQUEST *remainingAlts = malloc(MAX_REQUEST_ALTS * sizeof(REQUEST));
+    student.remainingAlts = remainingAlts;
+   
+    students[i] = student;
+  }
+  
+  for (size_t i = 0; i <= lines_len; i++) {
+    CSV_LINE line = lines[i];
+    STUDENT student;
+    for (uint16_t j = 0; j <= pupilNumCount; j++) {
+      if (lines[i].pupilNum == students[j].pupilNum) {
+        student = students[j];
+        break;
+      }
+
+      REQUEST request;
+      strcpy(request.crsNo, line.crsNo);
+      strcpy(request.description, line.description);
+      request.alternate = line.alternate;
+      student.requests[student.requestsLen] = request;
+      student.requestsLen++;
+    }
+  }
+
+  return students;
 }
 
 COURSE *getCourses(CSV_LINE *lines) {
+  // TODO: same shit as above but just for the courses
   return NULL;
 }
 
@@ -145,7 +221,7 @@ int main(int argc, char **argv) {
   */
   char data_dir[] = "sample_data/course_selection_data.csv";
   
-  size_t num_lines = count_lines(data_dir);
+  int num_lines = count_lines(data_dir);
   if (num_lines == -1) {
     fputs("Failed to read number of lines in the given CSV file!\n", stderr);
     return -1;
@@ -160,6 +236,7 @@ int main(int argc, char **argv) {
   free(lines);
 
   // Algorithm
+  free(students);
 
   return 0;
 }
