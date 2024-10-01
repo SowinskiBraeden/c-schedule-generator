@@ -21,7 +21,7 @@
 #define CLASS_CAP 30
 #define MAX_STUDENTS CLASS_CAP * CLASSROOMS
 
-// 5 is the length of "FALSE" & 3 is the number of commas per line
+// 6 is the length of "FALSE" + a null character & 3 is the number of commas per line
 #define MAX_CHAR MAX_PUPIL_NUM_LEN + MAX_COURSE_NO_LEN + MAX_COURSE_DES_LEN + 5 + 3
 
 /*** DEFINE CSV READER FUNCTIONS & DATASTRUCTURES ***/
@@ -41,21 +41,10 @@ int count_lines(char data_dir[]) {
     return -1;
   }
   char buff[MAX_CHAR];
-  size_t counter = 0;
-  for (;;) {
-    size_t res = fread(buff, 1, MAX_CHAR, stream);
-    if (ferror(stream))
-      return -1;
-
-    for (int i = 0; i < res; i++) {
-      if (buff[i] == '\n')
-        counter++;
-    }
-
-    if (feof(stream))
-      break;
+  size_t counter = 1;
+  while (fgets(buff, sizeof(buff), stream) != NULL) {
+    if (strchr(buff, '\n') != NULL) counter++;
   }
-
   fclose(stream);
   return counter;
 }
@@ -74,7 +63,7 @@ CSV_LINE *csvReader(char data_dir[], size_t size) {
   int i = 0;
 
   // Read each line in CSV file
-  while (fgets(buff, sizeof(buff), stream) && i <= size) {
+  while (fgets(buff, sizeof(buff), stream)) {
     CSV_LINE csv_line;
     lines[i] = csv_line;
 
@@ -131,7 +120,7 @@ typedef struct {
   uint16_t requests;
   char description[MAX_COURSE_DES_LEN];
   uint8_t credits;
-  char students[CLASS_CAP][sizeof(uint32_t)];
+  char *students;
 } COURSE;
 
 /*** DEFINE GET FUNCTIONS FOR STUDENTS & COURSES FROM CSV ***/
@@ -145,13 +134,11 @@ bool valueInArray(uint32_t val, uint32_t *arr, size_t n) {
 
 STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks) {
   // Find the number of unique students and the number of their requests
-  uint32_t tmpPupilNums[MAX_STUDENTS];
-  uint8_t numRequests[MAX_STUDENTS];
-  for (size_t i = 0; i <= MAX_STUDENTS; i++)
-    numRequests[i] = 0;
+  uint32_t tmpPupilNums[MAX_STUDENTS] = {0};
+  uint8_t numRequests[MAX_STUDENTS] = {0};
   uint16_t pupilNumCount = 0;
   uint16_t currentPupilNum;
-  for (size_t i = 0; i <= lines_len; i++) {
+  for (size_t i = 0; i < lines_len; i++) {
     currentPupilNum = lines[i].pupilNum;
     bool exists = valueInArray(lines[i].pupilNum, tmpPupilNums, sizeof(tmpPupilNums)/sizeof(uint32_t));
     if (sizeof(tmpPupilNums) == 0 || !exists) {
@@ -163,7 +150,7 @@ STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks) {
 
   // Create our student array with the correct number of students 
   STUDENT *students = malloc(pupilNumCount * sizeof(STUDENT));
-  for (uint16_t i = 0; i <= pupilNumCount; i++) {
+  for (uint16_t i = 0; i < pupilNumCount; i++) {
     STUDENT student;
     
     student.pupilNum = tmpPupilNums[i];
@@ -177,7 +164,6 @@ STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks) {
     student.requests = requests;
 
     char **schedule = malloc(TOTAL_BLOCKS * sizeof(int*));
-    for (int j = 0; j < TOTAL_BLOCKS; j++) schedule[j] = malloc(MAX_COURSE_ID_LEN);
     student.schedule = schedule;
 
     REQUEST *remainingAlts = malloc(MAX_REQUEST_ALTS * sizeof(REQUEST));
@@ -186,21 +172,18 @@ STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks) {
     students[i] = student;
   }
   
-  for (size_t i = 0; i <= lines_len; i++) {
-    CSV_LINE line = lines[i];
-    STUDENT student;
-    for (uint16_t j = 0; j <= pupilNumCount; j++) {
+  // Read each request in lines and assign to correct student
+  for (size_t i = 0; i < lines_len; i++) {
+    for (uint16_t j = 0; j < pupilNumCount; j++) {
       if (lines[i].pupilNum == students[j].pupilNum) {
-        student = students[j];
+        REQUEST request;
+        strcpy(request.crsNo, lines[i].crsNo);
+        strcpy(request.description, lines[i].description);
+        request.alternate = lines[i].alternate;
+        students[j].requests[students[j].requestsLen] = request;
+        students[j].requestsLen++;
         break;
       }
-
-      REQUEST request;
-      strcpy(request.crsNo, line.crsNo);
-      strcpy(request.description, line.description);
-      request.alternate = line.alternate;
-      student.requests[student.requestsLen] = request;
-      student.requestsLen++;
     }
   }
 
@@ -226,7 +209,7 @@ int main(int argc, char **argv) {
     fputs("Failed to read number of lines in the given CSV file!\n", stderr);
     return -1;
   }
-  
+
   CSV_LINE *lines = csvReader(data_dir, num_lines);
   if (lines == NULL) return -1;
 
@@ -235,8 +218,26 @@ int main(int argc, char **argv) {
 
   free(lines);
 
+  /*
+    Below code used for debugging csvReader & getStudents function
+  */
+  for (int i = 0; i < 1192; i++) {
+    printf("----------\n");
+    printf("Pupil Num: %d\n", students[i].pupilNum);
+    for (int j = 0; j < students[i].requestsLen; j++) {
+      printf("Request: %s\n", students[i].requests[j].description);
+    }
+  }
+ 
+  /*
+    TODO: create writeStudentsToJson function to write the student structs to a json for debugging
+    and final output data
+  */
+
+  // if (writeStudentsToJson(students, num_students, "students.json") == -1) return -1;
+
   // Algorithm
   free(students);
-
+  
   return 0;
 }
