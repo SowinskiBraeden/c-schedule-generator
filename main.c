@@ -132,28 +132,41 @@ bool valueInArray(uint32_t val, uint32_t *arr, size_t n) {
   return false;
 }
 
-STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks) {
-  // Find the number of unique students and the number of their requests
-  uint32_t tmpPupilNums[MAX_STUDENTS] = {0};
-  uint8_t numRequests[MAX_STUDENTS] = {0};
-  uint16_t pupilNumCount = 0;
-  uint16_t currentPupilNum;
+typedef struct {
+  uint32_t uniquePupilNumbers[MAX_STUDENTS];
+  size_t numberOfStudents;
+} STUDENT_ARR_INFO; 
+
+STUDENT_ARR_INFO getNumberOfStudents(CSV_LINE *lines, size_t lines_len) {
+  STUDENT_ARR_INFO students_info = {{0}, 0};
   for (size_t i = 0; i < lines_len; i++) {
-    currentPupilNum = lines[i].pupilNum;
-    bool exists = valueInArray(lines[i].pupilNum, tmpPupilNums, sizeof(tmpPupilNums)/sizeof(uint32_t));
-    if (sizeof(tmpPupilNums) == 0 || !exists) {
-      tmpPupilNums[pupilNumCount] = lines[i].pupilNum;
-      pupilNumCount++;
+    bool exists = valueInArray(lines[i].pupilNum, students_info.uniquePupilNumbers, students_info.numberOfStudents);
+    if (sizeof(students_info.uniquePupilNumbers) == 0 || !exists) {
+      students_info.uniquePupilNumbers[students_info.numberOfStudents] = lines[i].pupilNum;
+      students_info.numberOfStudents++;
     }
-    numRequests[pupilNumCount - 1]++;
+  }
+  return students_info;
+}
+
+STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks, STUDENT_ARR_INFO students_info) {
+  // Calculate each students number of requests to allocate the requests array
+  uint8_t numRequests[MAX_STUDENTS] = {0};
+  for (size_t i = 0; i < lines_len; i++) {
+    for (size_t j = 0; j < students_info.numberOfStudents; j++) {
+      if (students_info.uniquePupilNumbers[j] == lines[i].pupilNum) {
+        numRequests[j]++;
+        break;
+      }
+    }
   }
 
   // Create our student array with the correct number of students 
-  STUDENT *students = malloc(pupilNumCount * sizeof(STUDENT));
-  for (uint16_t i = 0; i < pupilNumCount; i++) {
+  STUDENT *students = malloc(students_info.numberOfStudents * sizeof(STUDENT));
+  for (uint16_t i = 0; i < students_info.numberOfStudents; i++) {
     STUDENT student;
     
-    student.pupilNum = tmpPupilNums[i];
+    student.pupilNum = students_info.uniquePupilNumbers[i];
     student.expectedClasses = 0;
     student.classes = 0;
     student.grade = 0;
@@ -174,7 +187,7 @@ STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks) {
   
   // Read each request in lines and assign to correct student
   for (size_t i = 0; i < lines_len; i++) {
-    for (uint16_t j = 0; j < pupilNumCount; j++) {
+    for (uint16_t j = 0; j < students_info.numberOfStudents; j++) {
       if (lines[i].pupilNum == students[j].pupilNum) {
         REQUEST request;
         strcpy(request.crsNo, lines[i].crsNo);
@@ -213,7 +226,9 @@ int main(int argc, char **argv) {
   CSV_LINE *lines = csvReader(data_dir, num_lines);
   if (lines == NULL) return -1;
 
-  STUDENT *students = getStudents(lines, num_lines, TOTAL_BLOCKS);
+  STUDENT_ARR_INFO students_info = getNumberOfStudents(lines, num_lines);
+
+  STUDENT *students = getStudents(lines, num_lines, TOTAL_BLOCKS, students_info);
   if (students == NULL) return -1;
 
   free(lines);
@@ -221,7 +236,7 @@ int main(int argc, char **argv) {
   /*
     Below code used for debugging csvReader & getStudents function
   */
-  for (int i = 0; i < 1192; i++) {
+  for (int i = 0; i < students_info.numberOfStudents; i++) {
     printf("----------\n");
     printf("Pupil Num: %d\n", students[i].pupilNum);
     for (int j = 0; j < students[i].requestsLen; j++) {
