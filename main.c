@@ -11,7 +11,7 @@
 // Important constants
 #define MAX_PUPIL_NUM_LEN 8
 #define MAX_COURSE_DES_LEN 50
-#define MAX_COURSE_NO_LEN 20
+#define MAX_COURSE_NO_LEN 21
 #define MAX_COURSE_ID_LEN MAX_COURSE_NO_LEN + 4 // 4 includes the underscore and the 3 digit unique number to identify the course
 
 #define TOTAL_BLOCKS 10 // the number of blocks between 2 semesters i.e 8 = 4 blocks per semester, 10 = 5 blocks per semester
@@ -20,8 +20,9 @@
 #define MIN_REQ 18
 #define CLASS_CAP 30
 #define MAX_STUDENTS CLASS_CAP * CLASSROOMS
+#define MAX_COURSES CLASSROOMS * TOTAL_BLOCKS
 
-// 6 is the length of "FALSE" + a null character & 3 is the number of commas per line
+// 5 is the length of "FALSE" & 3 is the number of commas per line
 #define MAX_CHAR MAX_PUPIL_NUM_LEN + MAX_COURSE_NO_LEN + MAX_COURSE_DES_LEN + 5 + 3
 
 /*** DEFINE CSV READER FUNCTIONS & DATASTRUCTURES ***/
@@ -120,14 +121,22 @@ typedef struct {
   uint16_t requests;
   char description[MAX_COURSE_DES_LEN];
   uint8_t credits;
-  char *students;
+  char **students;
+  uint8_t numberOfStudents;
 } COURSE;
 
 /*** DEFINE GET FUNCTIONS FOR STUDENTS & COURSES FROM CSV ***/
 
-bool valueInArray(uint32_t val, uint32_t *arr, size_t n) {
-  for (size_t i = 0; i < n; i++) 
+bool intInArray(uint32_t val, uint32_t *arr, size_t size) {
+  for (size_t i = 0; i < size; i++) 
     if (arr[i] == val)
+      return true;
+  return false;
+}
+
+bool strInArray(char *str, char arr[MAX_COURSES][MAX_COURSE_NO_LEN], size_t size) {
+  for (size_t i = 0; i < size; i++)
+    if (strcmp(arr[i], str) == 0)
       return true;
   return false;
 }
@@ -135,13 +144,14 @@ bool valueInArray(uint32_t val, uint32_t *arr, size_t n) {
 typedef struct {
   uint32_t uniquePupilNumbers[MAX_STUDENTS];
   size_t numberOfStudents;
-} STUDENT_ARR_INFO; 
+} UNIQUE_STUDENTS; 
 
-STUDENT_ARR_INFO getNumberOfStudents(CSV_LINE *lines, size_t lines_len) {
-  STUDENT_ARR_INFO students_info = {{0}, 0};
+UNIQUE_STUDENTS getNumberOfStudents(CSV_LINE *lines, size_t lines_len) {
+  // Find the number of unique students and store each unique pupil Num
+  UNIQUE_STUDENTS students_info = {{0}, 0};
   for (size_t i = 0; i < lines_len; i++) {
-    bool exists = valueInArray(lines[i].pupilNum, students_info.uniquePupilNumbers, students_info.numberOfStudents);
-    if (sizeof(students_info.uniquePupilNumbers) == 0 || !exists) {
+    bool exists = intInArray(lines[i].pupilNum, students_info.uniquePupilNumbers, students_info.numberOfStudents);
+    if (!exists) {
       students_info.uniquePupilNumbers[students_info.numberOfStudents] = lines[i].pupilNum;
       students_info.numberOfStudents++;
     }
@@ -149,7 +159,7 @@ STUDENT_ARR_INFO getNumberOfStudents(CSV_LINE *lines, size_t lines_len) {
   return students_info;
 }
 
-STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks, STUDENT_ARR_INFO students_info) {
+STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks, UNIQUE_STUDENTS students_info) {
   // Calculate each students number of requests to allocate the requests array
   uint8_t numRequests[MAX_STUDENTS] = {0};
   for (size_t i = 0; i < lines_len; i++) {
@@ -203,9 +213,41 @@ STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks, STUDEN
   return students;
 }
 
-COURSE *getCourses(CSV_LINE *lines) {
-  // TODO: same shit as above but just for the courses
-  return NULL;
+typedef struct {
+  char uniqueCrsNos[MAX_COURSES][MAX_COURSE_NO_LEN];
+  uint16_t numberOfCourses;
+} UNIQUE_COURSES;
+
+UNIQUE_COURSES getNumberOfCourses(CSV_LINE *lines, size_t lines_len) {
+  // Find the number of unique courses and store each unique course no.
+  UNIQUE_COURSES unique_course_info = {{{"\0"}}, 0};
+  for (size_t i = 0; i < lines_len; i++) {
+    bool exists = strInArray(lines[i].crsNo, unique_course_info.uniqueCrsNos, unique_course_info.numberOfCourses);
+    if (!exists) {
+      strcpy(unique_course_info.uniqueCrsNos[unique_course_info.numberOfCourses], lines[i].crsNo);
+      unique_course_info.numberOfCourses++;
+    }
+  }
+  return unique_course_info;
+}
+
+COURSE *getCourses(CSV_LINE *lines, size_t lines_len, UNIQUE_COURSES unique_course_info) {
+  COURSE *courses = malloc(unique_course_info.numberOfCourses * sizeof(COURSE));
+  for (size_t i = 0; i < unique_course_info.numberOfCourses; i++) {
+    for (size_t j = 0; j < lines_len; j++) {
+      if (strcmp(lines[j].crsNo, unique_course_info.uniqueCrsNos[j]) == 0) {
+        COURSE course = {"\0", 0, "\0", 4, NULL, 0}; // Ensure array of pupil numbers is null till we populate it later with the correct size
+        strcpy(course.crsNo, lines[i].crsNo);
+        strcpy(course.description, lines[i].description);
+        course.requests = 0;
+        course.credits = 0;
+        course.numberOfStudents = 0;
+        courses[i] = course;
+        break;
+      }
+    }
+  }
+  return courses;
 }
 
 int main(int argc, char **argv) {
@@ -226,33 +268,32 @@ int main(int argc, char **argv) {
   CSV_LINE *lines = csvReader(data_dir, num_lines);
   if (lines == NULL) return -1;
 
-  STUDENT_ARR_INFO students_info = getNumberOfStudents(lines, num_lines);
+  UNIQUE_STUDENTS students_info = getNumberOfStudents(lines, num_lines);
+  UNIQUE_COURSES courses_info = getNumberOfCourses(lines, num_lines);
 
   STUDENT *students = getStudents(lines, num_lines, TOTAL_BLOCKS, students_info);
   if (students == NULL) return -1;
 
-  free(lines);
+  COURSE *courses = getCourses(lines, num_lines, courses_info);
+  if (courses == NULL) return -1;
 
-  /*
-    Below code used for debugging csvReader & getStudents function
-  */
-  for (int i = 0; i < students_info.numberOfStudents; i++) {
-    printf("----------\n");
-    printf("Pupil Num: %d\n", students[i].pupilNum);
-    for (int j = 0; j < students[i].requestsLen; j++) {
-      printf("Request: %s\n", students[i].requests[j].description);
-    }
-  }
+  free(lines);
  
   /*
-    TODO: create writeStudentsToJson function to write the student structs to a json for debugging
-    and final output data
+    TODO:
+      - seperate functions into seperate files?
+      - create writeStudentsToJson function
+      - create writeCoursesToJson function
+      - start algorithm
   */
 
-  // if (writeStudentsToJson(students, num_students, "students.json") == -1) return -1;
+  // if (writeStudentsToJson(students, students_info.numberOfStudents, "output/students.json") == -1) return -1;
+  // if (writeCoursesToJson(courses, courses_info.numberOfCourses) == -1) return -1;
 
-  // Algorithm
+  // Algorithm here
+
   free(students);
+  free(courses);
   
   return 0;
 }

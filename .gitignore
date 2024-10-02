@@ -3,3 +3,9 @@ main
 
 # vscode config
 .vscode/
+
+# testing
+*.py
+
+# output
+output/
