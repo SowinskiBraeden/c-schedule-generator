@@ -131,7 +131,7 @@ typedef struct {
   uint16_t requests;
   char description[MAX_COURSE_DES_LEN];
   uint8_t credits;
-  char **students;
+  uint32_t students[CLASS_CAP];
   uint8_t numberOfStudents;
 } COURSE;
 
@@ -246,12 +246,9 @@ COURSE *getCourses(CSV_LINE *lines, size_t lines_len, UNIQUE_COURSES unique_cour
   for (size_t i = 0; i < unique_course_info.numberOfCourses; i++) {
     for (size_t j = 0; j < lines_len; j++) {
       if (strcmp(lines[j].crsNo, unique_course_info.uniqueCrsNos[j]) == 0) {
-        COURSE course = {"\0", 0, "\0", 4, NULL, 0}; // Ensure array of pupil numbers is null till we populate it later with the correct size
+        COURSE course = {"\0", 0, "\0", 4, {0}, 0}; // Ensure array of pupil numbers is null till we populate it later with the correct size
         strcpy(course.crsNo, lines[i].crsNo);
         strcpy(course.description, lines[i].description);
-        course.requests = 0;
-        course.credits = 0;
-        course.numberOfStudents = 0;
         courses[i] = course;
         break;
       }
@@ -283,10 +280,6 @@ int writeStudentsToJson(STUDENT *students, size_t numberOfStudents, char output_
     return -1;
   }
 
-  /*
-    TODO: expand this function to handle schedule and remainingAlts when data is provided
-  */
-
   fprintf(stream, "[\n");
 
   for (size_t i = 0; i < numberOfStudents; i++) {
@@ -303,10 +296,33 @@ int writeStudentsToJson(STUDENT *students, size_t numberOfStudents, char output_
     }
     fprintf(stream, "    ],\n");
     
-    fprintf(stream, "    \"schedule\": [],\n");
+    if (students[i].classes > 0) {
+      fprintf(stream, "    \"schedule\": [\n");
+      for (size_t j = 0; j < students[i].classes; j++) {
+        fprintf(stream, "      \"%s\"%s\n", students[i].schedule[j], j == students[i].classes - 1 ? "" : ",");
+      }
+      fprintf(stream, "    ],\n");
+    } else {
+      fprintf(stream, "    \"schedule\": [],\n");
+    }
+
     fprintf(stream, "    \"expectedClasses\": %d,\n", students[i].expectedClasses);
     fprintf(stream, "    \"classes\": %d,\n", students[i].classes);
-    fprintf(stream, "    \"remainingAlts\": [],\n");
+    
+    if (students[i].remainingAltsLen > 0) {
+      fprintf(stream, "    \"remainingAlts\": [\n");
+      for (size_t j = 0; j < students[i].remainingAltsLen; j++) {
+        fprintf(stream, "      {\n");
+        fprintf(stream, "        \"crsNo\": \"%s\",\n", students[i].remainingAlts[j].crsNo);
+        fprintf(stream, "        \"description\": \"%s\",\n", students[i].remainingAlts[j].description);
+        fprintf(stream, "        \"alternate\": %s\n", students[i].remainingAlts[j].alternate ? "true" : "false");
+        fprintf(stream, "      }%s\n", j == students[i].remainingAltsLen - 1 ? "" : ",");
+      }
+      fprintf(stream, "    ],\n");
+    } else {\
+      fprintf(stream, "    \"remainingAlts\": [],\n");
+    }
+    
     fprintf(stream, "    \"grade\": %d\n", students[i].grade);
     fprintf(stream, "  }%s\n", i == numberOfStudents - 1 ? "" : ",");
   }
@@ -323,10 +339,6 @@ int writeCoursesToJson(COURSE *courses, size_t numberOfCourses, char output_dir[
     return -1;
   }
   
-  /*
-    TODO: expand this function to handle students array when data is provided
-  */
-
   fprintf(stream, "[\n");
 
   for (size_t i = 0; i < numberOfCourses; i++) {
@@ -335,7 +347,17 @@ int writeCoursesToJson(COURSE *courses, size_t numberOfCourses, char output_dir[
     fprintf(stream, "    \"requests\": %d,\n", courses[i].requests);
     fprintf(stream, "    \"description\": \"%s\",\n", courses[i].description);
     fprintf(stream, "    \"credits\": %d,\n", courses[i].credits);
-    fprintf(stream, "    \"students\": [],\n");
+    
+    if (courses[i].numberOfStudents > 0) {
+      fprintf(stream, "    \"students\": [\n");
+      for (size_t j = 0; j < courses[i].numberOfStudents; j++) {
+        fprintf(stream, "      \"%d\"%s\n", courses[i].students[j], j == courses[i].numberOfStudents - 1 ? "" : ",");
+      }
+      fprintf(stream, "    ],\n");
+    } else {
+      fprintf(stream, "    \"students\": [],\n");
+    }
+
     fprintf(stream, "    \"numberOfStudents\": %d\n", courses[i].numberOfStudents);
     fprintf(stream, "  }%s\n", i == numberOfCourses - 1 ? "" : ",");
   }
