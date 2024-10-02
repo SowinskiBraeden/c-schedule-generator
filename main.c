@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <sys/stat.h>
 
-// Import proper functions depending on operating system
+// Import and define proper functions depending on OS
 #ifdef _WIN32
 #include <direct.h>
 #define MKDIR(name) _mkdir(name)
@@ -144,6 +144,11 @@ bool intInArray(uint32_t val, uint32_t *arr, size_t size) {
   return false;
 }
 
+/*
+  TODO: find a way to make the arr paramter work with any size, i.e char **arr
+  However, when I call this array I can't seem to be able to pass the string array
+  I want without it throwing an error when using char **arr as the parameter
+*/
 bool strInArray(char *str, char arr[MAX_COURSES][MAX_COURSE_NO_LEN], size_t size) {
   for (size_t i = 0; i < size; i++)
     if (strcmp(arr[i], str) == 0)
@@ -257,6 +262,8 @@ COURSE *getCourses(CSV_LINE *lines, size_t lines_len, UNIQUE_COURSES unique_cour
   return courses;
 }
 
+// Yeah the above functions are not optimal, doing the same loop over and over in different places but oh well, works for me
+
 /*** DEFINE JSON FUNCTION HANDLERS ***/
 
 int createDirectory(const char *dir_name) {
@@ -367,6 +374,8 @@ int writeCoursesToJson(COURSE *courses, size_t numberOfCourses, char output_dir[
   return 0;
 }
 
+/*** MAIN ***/
+
 int main(int argc, char **argv) {
 
   /*
@@ -385,9 +394,11 @@ int main(int argc, char **argv) {
   CSV_LINE *lines = csvReader(data_dir, num_lines);
   if (lines == NULL) return -1;
 
+  // Get number of students & number of courses
   UNIQUE_STUDENTS students_info = getNumberOfStudents(lines, num_lines);
   UNIQUE_COURSES courses_info = getNumberOfCourses(lines, num_lines);
 
+  // Create struct array of students & courses
   STUDENT *students = getStudents(lines, num_lines, TOTAL_BLOCKS, students_info);
   if (students == NULL) return -1;
 
@@ -396,19 +407,12 @@ int main(int argc, char **argv) {
 
   free(lines);
  
-  /*
-    TODO:
-      - seperate functions into seperate files?
-      - create writeStudentsToJson function
-      - create writeCoursesToJson function
-      - start algorithm
-  */
+  // Algorithm here
 
+  // Write data to json for output
   if (createDirectory("output") == -1) return -1;
   if (writeStudentsToJson(students, students_info.numberOfStudents, "output/students.json") == -1) return -1;
   if (writeCoursesToJson(courses, courses_info.numberOfCourses, "output/courses.json") == -1) return -1;
-
-  // Algorithm here
 
   free(students);
   free(courses);
