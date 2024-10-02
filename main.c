@@ -3,6 +3,16 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/stat.h>
+
+// Import proper functions depending on operating system
+#ifdef _WIN32
+#include <direct.h>
+#define MKDIR(name) _mkdir(name)
+#else
+#include <unistd.h>
+#define MKDIR(name) mkdir(name, 0777)
+#endif
 
 /*
   Using define instead of constants prevents
@@ -252,6 +262,20 @@ COURSE *getCourses(CSV_LINE *lines, size_t lines_len, UNIQUE_COURSES unique_cour
 
 /*** DEFINE JSON FUNCTION HANDLERS ***/
 
+int createDirectory(const char *dir_name) {
+  // check if directory already exists
+  struct stat statbuf;
+  if (stat(dir_name, &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
+    return 0; // Directory exists
+
+  if (MKDIR(dir_name) == 0) {
+    return 1; // Directory created
+  } else {
+    fputs("Failed to create directory", stderr);
+    return -1;
+  }
+}
+
 int writeStudentsToJson(STUDENT *students, size_t numberOfStudents, char output_dir[]) {
   FILE *stream = fopen(output_dir, "w");
   if (!stream) {
@@ -285,6 +309,35 @@ int writeStudentsToJson(STUDENT *students, size_t numberOfStudents, char output_
     fprintf(stream, "    \"remainingAlts\": [],\n");
     fprintf(stream, "    \"grade\": %d\n", students[i].grade);
     fprintf(stream, "  }%s\n", i == numberOfStudents - 1 ? "" : ",");
+  }
+
+  fprintf(stream, "]");
+  fclose(stream);
+  return 0;
+}
+
+int writeCoursesToJson(COURSE *courses, size_t numberOfCourses, char output_dir[]) {
+  FILE *stream = fopen(output_dir, "w");
+  if (!stream) {
+    fputs("Failed to open courses output file", stderr);
+    return -1;
+  }
+  
+  /*
+    TODO: expand this function to handle students array when data is provided
+  */
+
+  fprintf(stream, "[\n");
+
+  for (size_t i = 0; i < numberOfCourses; i++) {
+    fprintf(stream, "  {\n");
+    fprintf(stream, "    \"crsNo\": \"%s\",\n", courses[i].crsNo);
+    fprintf(stream, "    \"requests\": %d,\n", courses[i].requests);
+    fprintf(stream, "    \"description\": \"%s\",\n", courses[i].description);
+    fprintf(stream, "    \"credits\": %d,\n", courses[i].credits);
+    fprintf(stream, "    \"students\": [],\n");
+    fprintf(stream, "    \"numberOfStudents\": %d\n", courses[i].numberOfStudents);
+    fprintf(stream, "  }%s\n", i == numberOfCourses - 1 ? "" : ",");
   }
 
   fprintf(stream, "]");
@@ -329,8 +382,9 @@ int main(int argc, char **argv) {
       - start algorithm
   */
 
+  if (createDirectory("output") == -1) return -1;
   if (writeStudentsToJson(students, students_info.numberOfStudents, "output/students.json") == -1) return -1;
-  // if (writeCoursesToJson(courses, courses_info.numberOfCourses) == -1) return -1;
+  if (writeCoursesToJson(courses, courses_info.numberOfCourses, "output/courses.json") == -1) return -1;
 
   // Algorithm here
 
