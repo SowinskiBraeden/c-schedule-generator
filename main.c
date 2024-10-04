@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include <math.h>
 
 // Import and define proper functions depending on OS
 #ifdef _WIN32
@@ -302,6 +303,7 @@ int writeStudentsToJson(STUDENT *students, size_t numberOfStudents, char output_
       fprintf(stream, "      }%s\n", j == students[i].requestsLen - 1 ? "" : ",");
     }
     fprintf(stream, "    ],\n");
+    fprintf(stream, "    \"requestsLen\": %d,\n", students[i].requestsLen);
     
     if (students[i].classes > 0) {
       fprintf(stream, "    \"schedule\": [\n");
@@ -374,6 +376,65 @@ int writeCoursesToJson(COURSE *courses, size_t numberOfCourses, char output_dir[
   return 0;
 }
 
+/*** ALGORITHM ***/
+
+typedef struct {
+  //                0-9 block idx |    CRS_NO_ID     | pupilNums
+  uint16_t timetable[TOTAL_BLOCKS][MAX_COURSE_ID_LEN][CLASS_CAP];
+  bool success;
+} TIMETABLE;
+
+char FLEX[2][11] = {"XAT--12A-S", "XAT--12B-S"};
+
+TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *courses, size_t size_courses) {
+  TIMETABLE timetable = {{{{0}}}, 0};
+  
+  uint8_t median = floor((MIN_REQ + CLASS_CAP) / 2);
+  uint8_t blocksPerSemester = TOTAL_BLOCKS / 2;
+
+  // Step 1 - Tally requests to check which courses are eligable to run
+  char activeCourses[MAX_COURSES][MAX_COURSE_NO_LEN] = {{"\0"}};
+  size_t activeCoursesIndexes[MAX_COURSES] = {0};
+  uint16_t activeCourseIndex = 0;
+  for (size_t i = 0; i < size_students; i++) {
+    for (size_t j = 0; j < students[i].requestsLen; j++) {
+      if (students[i].requests[j].alternate) continue;
+      if (strcmp(students[i].requests[j].crsNo, FLEX[0]) == 0) continue;
+      if (strcmp(students[i].requests[j].crsNo, FLEX[1]) == 0) continue;
+
+      for (size_t k = 0; k < size_courses; k++) {
+        if (strcmp(courses[k].crsNo, students[i].requests[j].crsNo) == 0) {
+          courses[k].requests++;
+          if (courses[k].requests >= MIN_REQ) {
+            if (activeCourseIndex == 0) {
+              strcpy(activeCourses[activeCourseIndex], courses[k].crsNo);
+              activeCoursesIndexes[activeCourseIndex] = k;
+              activeCourseIndex++;
+            } else {
+              bool exists = false;
+              for (size_t l = 0; l < activeCourseIndex; l++) {
+                if (strcmp(activeCourses[l], courses[k].crsNo) == 0) {
+                  exists = true;
+                  break;
+                }
+              }
+
+              if (!exists) {
+                strcpy(activeCourses[activeCourseIndex], courses[k].crsNo);
+                activeCoursesIndexes[activeCourseIndex] = k;
+                activeCourseIndex++;
+              }
+            }
+          }
+          break;
+        }
+      }
+    }  
+  }
+
+  return timetable;
+}
+
 /*** MAIN ***/
 
 int main(int argc, char **argv) {
@@ -387,7 +448,7 @@ int main(int argc, char **argv) {
   
   int num_lines = count_lines(data_dir);
   if (num_lines == -1) {
-    fputs("Failed to read number of lines in the given CSV file!\n", stderr);
+    fputs("Failed to read number of lines in the givengiven CSV file!\n", stderr);
     return -1;
   }
 
@@ -408,6 +469,7 @@ int main(int argc, char **argv) {
   free(lines);
  
   // Algorithm here
+  TIMETABLE timetable = generateTimetable(students, students_info.numberOfStudents, courses, courses_info.numberOfCourses);
 
   // Write data to json for output
   if (createDirectory("output") == -1) return -1;
