@@ -473,6 +473,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
 
   char hex[] = "0123456789abcdefABCDEF"; // Used to get a unique character to identify different classes of the same course
 
+  uint8_t *allClassRunCounts = malloc(activeCourseIndex * sizeof(uint8_t));
   CLASS *emptyClasses = malloc(CLASSROOMS * TOTAL_BLOCKS * sizeof(CLASS)); // max this out to total number of classrooms available between both semesters
   size_t currentIndex = 0;
   for (size_t i = 0; i < activeCourseIndex; i++) {
@@ -514,6 +515,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
         for (size_t j = 0; j < classRunCount; j++) {
           emptyClasses[courseClassIndexes[j]].numberOfStudents++;
           remaining--;
+          if (remaining == 0) break;
         }
       }
 
@@ -547,7 +549,40 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       }
 
     } else if (remainingPlusExtraFromExistingCanCreateNewClass) {
-      // TODO handle this logic
+      // Take 1 student from each existing class till min requirement is met
+      while (remaining < MIN_REQ) {
+        for (size_t j = 0; j < classRunCount; j++) {
+          emptyClasses[courseClassIndexes[j]].numberOfStudents--;
+          remaining++;
+          if (remaining == MIN_REQ) break;
+        }
+      }
+
+      // Create new class with remaining
+      CLASS newClass;
+      char courseID[MAX_COURSE_NO_LEN + 3]; // +3 = "_n\0" where n is the ID
+      strcpy(courseID, course[index].crsNo);
+      appendChar(courseID, hex[classRunCount]);
+      strcpy(newClass.crsNo, courseID);
+      strcpy(newClass.description, courses[index].description);
+      newClass.numberOfStudents = remaining;
+
+      // Insert class into empty classes array and update index
+      emptyClasses[currentIndex] = newClass;
+      courseClassIndexes[classRunCount] = currentIndex;
+      currentIndex++;
+      classRunCount++;
+
+      // Equalize the class number of students
+      uint8_t *numberOfStudentsArr = malloc(classRunCount * sizeof(uint8_t));
+      for (size_t j = 0; j < classRunCount; j++)
+        numberOfStudentsArr[j] = emptyClasses[courseClassIndexes[j]].numberOfStudents;
+
+      numberOfStudentsArr = equal(numberOfStudentsArr, classRunCount);
+      for (size_t j = 0; j < classRunCount; j++)
+        emptyClasses[courseClassIndexes[j]].numberOfStudents = numberOfStudentsArr[j];
+
+      free(numberOfStudentsArr);
 
     } else {
       /*
@@ -556,16 +591,33 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
         that dont fit will be ignored so later they can be folded into their
         alternative choices
       */
+      
+      bool full = false;
+      while (!full) {
+        if (remaining == 0) break; // should not be possible but not taking chances
+        for (size_t j = 0; j < classRunCounnt; j++) {
+          if (remaining == 0) break; // same here
+          if (emptyClasses[courseClassIndexes[j]].numberOfStudents == CLASS_CAP) continue; // this shouldn't be possible either, but still not taking chances
+          if (emptyClasses[courseClassIndexes[classRunCount - 1]].numberOfStudents == CLASS_CAP) {
+            // If the last class in the array is at class_cap, all other classes must be at class cap and we are full
+            full = true;
+            break;
+          }
 
-      // TODO: handle this logic too
+          emptyClasses[courseClassIndexes[j]].numberOfStudents++;
+          remaining--;
+        }
+      }
     }
 
     free(courseClassIndexes);
+    allClassRunCounts[i] = classRunCount;
   }
 
   // DO MORE ALGORITHM
 
   free(emptyClasses);
+  free(allClassRunCounts);
 
   return timetable;
 }
