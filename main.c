@@ -561,7 +561,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       // Create new class with remaining
       CLASS newClass;
       char courseID[MAX_COURSE_NO_LEN + 3]; // +3 = "_n\0" where n is the ID
-      strcpy(courseID, course[index].crsNo);
+      strcpy(courseID, courses[index].crsNo);
       appendChar(courseID, hex[classRunCount]);
       strcpy(newClass.crsNo, courseID);
       strcpy(newClass.description, courses[index].description);
@@ -594,10 +594,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       
       bool full = false;
       while (!full) {
-        if (remaining == 0) break; // should not be possible but not taking chances
-        for (size_t j = 0; j < classRunCounnt; j++) {
-          if (remaining == 0) break; // same here
-          if (emptyClasses[courseClassIndexes[j]].numberOfStudents == CLASS_CAP) continue; // this shouldn't be possible either, but still not taking chances
+        for (size_t j = 0; j < classRunCount; j++) {
           if (emptyClasses[courseClassIndexes[classRunCount - 1]].numberOfStudents == CLASS_CAP) {
             // If the last class in the array is at class_cap, all other classes must be at class cap and we are full
             full = true;
