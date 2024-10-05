@@ -9,3 +9,5 @@ main
 
 # output
 output/
+obj/
+bin/
