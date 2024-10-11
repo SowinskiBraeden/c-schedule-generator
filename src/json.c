@@ -16,7 +16,7 @@
 int createDirectory(const char *dir_name) {
   // check if directory already exists
   struct stat statbuf;
-  if (stat(dir_name, &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
+  if (stat(dir_name, &statbuf) == 0 && (statbuf.st_mode & S_IFMT) == S_IFDIR)
     return 0; // Directory exists
 
   if (MKDIR(dir_name) == 0) {

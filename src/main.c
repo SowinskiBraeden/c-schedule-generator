@@ -49,8 +49,8 @@ uint8_t *equal(uint8_t *arr, size_t size) {
 TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *courses, size_t size_courses) {
   TIMETABLE timetable = {{{{0}}}, false};
 
-  uint8_t MEDIAN = floor((MIN_REQ + CLASS_CAP) / 2);
-  uint8_t BLOCKS_PER_SEMESTER = TOTAL_BLOCKS / 2;
+  uint8_t MEDIAN = floor((float) (MIN_REQ + CLASS_CAP) / 2);
+  // uint8_t BLOCKS_PER_SEMESTER = TOTAL_BLOCKS / 2;
 
 
   // Step 1 - Tally requests to check which courses are eligable to run
@@ -103,7 +103,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
   size_t currentIndex = 0;
   for (size_t i = 0; i < activeCourseIndex; i++) {
     uint16_t index = activeCoursesIndexes[i];
-    uint8_t classRunCount = floor(courses[index].requests / MEDIAN);
+    uint8_t classRunCount = floor((float) courses[index].requests / MEDIAN);
     uint8_t remaining = courses[index].requests % MEDIAN;
 
     size_t *courseClassIndexes = malloc((classRunCount + 1) * sizeof(size_t)); // add 1 to classRunCount in case we need to create an extra class with remaining
