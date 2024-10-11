@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdint.h>
 #include "main.h"
 
 #ifndef CSV_H_INCLUDED

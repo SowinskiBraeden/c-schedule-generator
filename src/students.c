@@ -2,7 +2,6 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "students.h"
 #include "../include/main.h"
 #include "../include/csv.h"
 #include "../include/students.h"

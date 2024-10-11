@@ -12,7 +12,6 @@ typedef struct {
   bool alternate;
 } CSV_LINE;
 
-// Dumbass me set this to size_t earlier, forgot that size_t is unsigned and I can't return -1 on failure
 int count_lines(char data_dir[]) {
   FILE *stream = fopen(data_dir, "r");
   if (!stream) {

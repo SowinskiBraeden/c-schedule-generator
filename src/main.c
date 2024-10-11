@@ -50,7 +50,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
   TIMETABLE timetable = {{{{0}}}, false};
 
   uint8_t MEDIAN = floor((MIN_REQ + CLASS_CAP) / 2);
-  // uint8_t BLOCKS_PER_SEMESTER = TOTAL_BLOCKS / 2;
+  uint8_t BLOCKS_PER_SEMESTER = TOTAL_BLOCKS / 2;
 
 
   // Step 1 - Tally requests to check which courses are eligable to run

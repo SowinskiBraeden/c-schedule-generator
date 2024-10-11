@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stdint.h>
 #include "csv.h"
 #include "main.h"
 
