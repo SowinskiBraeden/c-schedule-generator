@@ -20,7 +20,8 @@ typedef struct {
 } COURSE; // Course is the general information for selection and stuff?
 
 typedef struct {
-  char crsNo[MAX_COURSE_NO_LEN];
+  char crsNo[MAX_COURSE_ID_LEN];
+  char baseCrsNo[MAX_COURSE_NO_LEN];
   char description[MAX_COURSE_DES_LEN];
   uint32_t students[CLASS_CAP];
   uint8_t numberOfStudents;
