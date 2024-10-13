@@ -13,8 +13,12 @@
 const char FLEX[2][11] = {"XAT--12A-S", "XAT--12B-S"};
 
 typedef struct {
-  //                0-9 block idx |    CRS_NO_ID     | pupilNums
-  uint16_t timetable[TOTAL_BLOCKS][MAX_COURSE_ID_LEN][CLASS_CAP];
+  uint8_t numberOfClasses;
+  char classes[CLASSROOMS][MAX_COURSE_ID_LEN];
+} TIMETABLE_BLOCK;
+
+typedef struct {
+  TIMETABLE_BLOCK timetable[TOTAL_BLOCKS];
   bool success;
 } TIMETABLE;
 
@@ -46,11 +50,28 @@ uint8_t *equal(uint8_t *arr, size_t size) {
   return arr;
 }
 
+typedef enum {
+  FirstToSecondSemester,
+  SecondToFirstSemester
+} StepType;
+
+int stepIndex(int offset, StepType type, uint8_t blocksPerSemester) {
+  if (type == FirstToSecondSemester)
+    return (offset == 0 || offset == -1 * (blocksPerSemester - 1)) ? blocksPerSemester : (-1 * (blocksPerSemester - 1));
+  
+  if (type == SecondToFirstSemester)
+    return (offset == 0 || offset == blocksPerSemester + 1) ? (-1 * blocksPerSemester) : (blocksPerSemester + 1);
+
+  // Should not be possible
+  return -1;
+}
+
 TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *courses, size_t size_courses) {
-  TIMETABLE timetable = {{{{0}}}, false};
+  TIMETABLE_BLOCK defaultBlock = {0, {"\0"}};
+  TIMETABLE timetable = {{defaultBlock}, false};
 
   uint8_t MEDIAN = floor((float) (MIN_REQ + CLASS_CAP) / 2);
-  // uint8_t BLOCKS_PER_SEMESTER = TOTAL_BLOCKS / 2;
+  uint8_t BLOCKS_PER_SEMESTER = TOTAL_BLOCKS / 2;
 
 
   /*** STEP 1 - Tally requests to check which courses are eligable to run ***/
@@ -384,6 +405,74 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
 
   free(currentInserted);
   free(tempStudents);
+
+  /*** STEP 4 - Insert classes into timetable ***/
+  while (activeCoursesLen > 0) {
+    // Find highest resource class (most times run)
+    size_t index = 0;
+    uint8_t max = 0;
+    for (size_t i = 0; i < activeCoursesLen; i++) {
+      if (allClassRunCounts[i] > max) {
+        max = allClassRunCounts[i];
+        index = i;
+      }
+    }
+
+    char course[MAX_COURSE_NO_LEN] = {"\0"};
+    strcpy(course, courses[activeCoursesIndexes[index]].crsNo);
+
+    // Tally first semester and second semester
+    uint8_t *allSemesterBlockLens = malloc(TOTAL_BLOCKS * sizeof(uint8_t));
+    for (uint8_t i = 0; i < TOTAL_BLOCKS; i++)
+      allSemesterBlockLens[i] = timetable.timetable[i].numberOfClasses;
+
+    // If there is more than one class running
+    if (allClassRunCounts[activeCoursesIndexes[index]] > 1) {
+      // Get index of block with least class run counts
+      uint8_t minClassrooms = CLASSROOMS;
+      uint8_t blockIndex = 0; // default to first block if all are same
+      for (uint8_t i = 0; i < TOTAL_BLOCKS; i++) {
+        if (allSemesterBlockLens[i] < minClassrooms) {
+          minClassrooms = allSemesterBlockLens[i];
+          blockIndex = i;
+        }
+      }
+
+      StepType step = blockIndex < BLOCKS_PER_SEMESTER ? FirstToSecondSemester : SecondToFirstSemester;
+      int offset = 0;
+
+      // Disperse classes throughout both semesters
+      for (size_t i = 0; i < allClassRunCounts[index]; i++) {
+        char className[MAX_COURSE_ID_LEN] = {"\0"};
+        strcpy(className, classes[activeCoursesIndexes[index]].crsNo);
+        bool classInserted = false;
+
+        while (!classInserted) {
+          blockIndex += offset;
+          
+          if (timetable.timetable[blockIndex].numberOfClasses < CLASSROOMS) {
+            uint8_t classIndex = timetable.timetable[blockIndex].numberOfClasses;
+            strcpy(timetable.timetable[blockIndex].classes[blockIndex], className);
+            allClassRunCounts[index]--;
+            classInserted = true;
+          }
+
+          offset = stepIndex(offset, step, BLOCKS_PER_SEMESTER);
+        
+          if (blockIndex >= (TOTAL_BLOCKS - 1)) {
+            blockIndex = step == FirstToSecondSemester ? 0 : BLOCKS_PER_SEMESTER;
+            offset = 0;
+          }
+        }
+      }
+
+    // If the class only runs once, place in semester with least classes
+    } else if (allClassRunCounts[activeCoursesIndexes[index]] == 1) {
+      // TODO: handle this
+    }
+
+    free(allSemesterBlockLens);
+  }
 
   // DO MORE ALGORITHM
 
