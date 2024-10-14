@@ -26,7 +26,7 @@
 #define MIN_REQ 18
 #define CLASS_CAP 30
 #define MAX_STUDENTS CLASS_CAP * CLASSROOMS
-#define MAX_COURSES CLASSROOMS * TOTAL_BLOCKS
+#define MAX_CLASSES CLASSROOMS * TOTAL_BLOCKS
 
 // 5 is the length of "FALSE" & 3 is the number of commas per line
 #define MAX_CHAR MAX_PUPIL_NUM_LEN + MAX_COURSE_NO_LEN + MAX_COURSE_DES_LEN + 5 + 3

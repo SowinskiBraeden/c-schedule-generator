@@ -11,7 +11,7 @@
   However, when I call this array I can't seem to be able to pass the string array
   I want without it throwing an error when using char **arr as the parameter
 */
-bool strInArray(char *str, char arr[MAX_COURSES][MAX_COURSE_NO_LEN], size_t size) {
+bool strInArray(char *str, char arr[MAX_CLASSES][MAX_COURSE_NO_LEN], size_t size) {
   for (size_t i = 0; i < size; i++)
     if (strcmp(arr[i], str) == 0)
       return true;

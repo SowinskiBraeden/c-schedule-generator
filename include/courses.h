@@ -6,7 +6,7 @@
 #define COURSES_H_INCLUDED
 
 typedef struct {
-  char uniqueCrsNos[MAX_COURSES][MAX_COURSE_NO_LEN];
+  char uniqueCrsNos[MAX_CLASSES][MAX_COURSE_NO_LEN];
   uint16_t numberOfCourses;
 } UNIQUE_COURSES;
 

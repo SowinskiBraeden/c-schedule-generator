@@ -75,8 +75,8 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
 
 
   /*** STEP 1 - Tally requests to check which courses are eligable to run ***/
-  char activeCourses[MAX_COURSES][MAX_COURSE_NO_LEN] = {{"\0"}};
-  size_t activeCoursesIndexes[MAX_COURSES] = {0};
+  char activeCourses[MAX_CLASSES][MAX_COURSE_NO_LEN] = {{"\0"}};
+  size_t activeCoursesIndexes[MAX_CLASSES] = {0};
   uint16_t activeCoursesLen = 0; // also acts as the length of activeCourses
   for (size_t i = 0; i < size_students; i++) {
     for (size_t j = 0; j < students[i].requestsLen; j++) {
@@ -281,8 +281,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
   while (size_tempStudents > 0) {
     // Choose student at random, to prevent success bias to students first in the array
     STUDENT student = tempStudents[rand() % size_tempStudents];
-    // printf("pupilNum: %d\n", student.pupilNum);
-
+    
     // Create an array of students alternates
     size_t numberOfAlts = 0;
     for (size_t i = 0; i < student.requestsLen; i++)
@@ -305,14 +304,10 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       strcpy(course, student.requests[i].crsNo);
       bool getAvailableCourse = true;
       bool isAlt = false;
-      // printf("getting available course for %s...\n", course);
       while (getAvailableCourse) {
-        // printf("searching...\n");
         for (size_t j = 0; j < classesLen; j++) {
           // Class exists in classes
-          // printf("comparing target %s to %s at idx %ld\n", course, classes[j].crsNo, j);
           if (strcmp(classes[j].baseCrsNo, course) == 0) {
-            // printf("course %s exists\n", course);
             // If this is an alternate, and there is room to expand, increase number of students to allow extra
             if (isAlt && classes[j].numberOfStudents < CLASS_CAP)
               classes[j].numberOfStudents++;
@@ -350,7 +345,6 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
             }
             // this class does not exist, i.e not enough requests
           } else if (j == classesLen - 1) {
-            // printf("course %s does not exist\n", course);
             if (numberOfAlts > 0) {
               // Use alternate
               strcpy(course, alternates[0].crsNo); // asign alternate to course and retry
@@ -373,7 +367,6 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
           }
         }
       }
-      // printf("got available course for %s...\n", course); 
     }
 
     // Asign remaining alternates to student
@@ -417,20 +410,18 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
         index = i;
       }
     }
-
-    char course[MAX_COURSE_NO_LEN] = {"\0"};
-    strcpy(course, courses[activeCoursesIndexes[index]].crsNo);
+    size_t courseIndex = activeCoursesIndexes[index];
 
     // Tally first semester and second semester
-    uint8_t *allSemesterBlockLens = malloc(TOTAL_BLOCKS * sizeof(uint8_t));
+    uint8_t allSemesterBlockLens[TOTAL_BLOCKS] = {0};
     for (uint8_t i = 0; i < TOTAL_BLOCKS; i++)
       allSemesterBlockLens[i] = timetable.timetable[i].numberOfClasses;
 
     // If there is more than one class running
-    if (allClassRunCounts[activeCoursesIndexes[index]] > 1) {
+    if (allClassRunCounts[index] > 1) {
       // Get index of block with least class run counts
       uint8_t minClassrooms = CLASSROOMS;
-      uint8_t blockIndex = 0; // default to first block if all are same
+      uint8_t blockIndex = 0;
       for (uint8_t i = 0; i < TOTAL_BLOCKS; i++) {
         if (allSemesterBlockLens[i] < minClassrooms) {
           minClassrooms = allSemesterBlockLens[i];
@@ -442,18 +433,29 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       int offset = 0;
 
       // Disperse classes throughout both semesters
-      for (size_t i = 0; i < allClassRunCounts[index]; i++) {
+      size_t indexOffset = 0;
+      size_t baseIndex = 0;
+      for (size_t i = 0; i < classesLen; i++) {
+        if (classes[i].baseCrsNo == activeCourses[courseIndex]) {
+          baseIndex = i;
+          break;
+        }
+      }
+      uint8_t classRunCounts = allClassRunCounts[index];
+      for (size_t i = 0; i < classRunCounts; i++) {
         char className[MAX_COURSE_ID_LEN] = {"\0"};
-        strcpy(className, classes[activeCoursesIndexes[index]].crsNo);
-        bool classInserted = false;
+        strcpy(className, classes[baseIndex + indexOffset].crsNo);
 
+        bool classInserted = false;
         while (!classInserted) {
           blockIndex += offset;
           
           if (timetable.timetable[blockIndex].numberOfClasses < CLASSROOMS) {
             uint8_t classIndex = timetable.timetable[blockIndex].numberOfClasses;
-            strcpy(timetable.timetable[blockIndex].classes[blockIndex], className);
+            strcpy(timetable.timetable[blockIndex].classes[classIndex], className);
+            timetable.timetable[blockIndex].numberOfClasses++;
             allClassRunCounts[index]--;
+            indexOffset++;
             classInserted = true;
           }
 
@@ -467,12 +469,52 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       }
 
     // If the class only runs once, place in semester with least classes
-    } else if (allClassRunCounts[activeCoursesIndexes[index]] == 1) {
-      // TODO: handle this
+    } else if (allClassRunCounts[index] == 1) {
+      // Get index of block with least class run counts
+      uint8_t minClassrooms = CLASSROOMS;
+      uint8_t blockIndex = 0;
+      for (uint8_t i = 0; i < TOTAL_BLOCKS; i++) {
+        if (allSemesterBlockLens[i] < minClassrooms) {
+          minClassrooms = allSemesterBlockLens[i];
+          blockIndex = i;
+        }
+      }
+
+      char className[MAX_COURSE_ID_LEN] = {"\0"};
+      size_t baseIndex = 0;
+      for (size_t i = 0; i < classesLen; i++)
+        if (classes[i].baseCrsNo == activeCourses[courseIndex])
+          baseIndex = i;
+      strcpy(className, classes[baseIndex].crsNo);
+      uint8_t classIndex = timetable.timetable[blockIndex].numberOfClasses;
+      strcpy(timetable.timetable[blockIndex].classes[classIndex], className);
+      timetable.timetable[blockIndex].numberOfClasses++;
+      allClassRunCounts[index]--;
     }
 
-    free(allSemesterBlockLens);
+    if (allClassRunCounts[index] == 0) {
+      activeCoursesLen--;
+      uint8_t *tempAllClassRunCounts = malloc(activeCoursesLen * sizeof(uint8_t));
+      size_t tempIndex = 0;
+      for (size_t i = 0; i <= activeCoursesLen; i++) {
+        if (i != index) {
+          tempAllClassRunCounts[tempIndex] = allClassRunCounts[i];
+          tempIndex++;
+        }
+      }
+      allClassRunCounts = realloc(allClassRunCounts, activeCoursesLen * sizeof(uint8_t));
+      memcpy(allClassRunCounts, tempAllClassRunCounts, activeCoursesLen * sizeof(uint8_t));
+      free(tempAllClassRunCounts);
+    }
   }
+
+  // // verify step 5 works
+  // for (uint8_t i = 0; i < TOTAL_BLOCKS; i++) {
+  //   for (size_t j = 0; j < timetable.timetable[i].numberOfClasses; j++) {
+  //     printf("Block %d.%ld - %s\n", i + 1, j + 1, timetable.timetable[i].classes[j]);
+  //   }
+  //   printf("-------------------------\n");
+  // }
 
   // DO MORE ALGORITHM
 
