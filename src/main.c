@@ -75,8 +75,8 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
 
 
   /*** STEP 1 - Tally requests to check which courses are eligable to run ***/
-  char activeCourses[MAX_CLASSES][MAX_COURSE_NO_LEN] = {{"\0"}};
-  size_t activeCoursesIndexes[MAX_CLASSES] = {0};
+  char **activeCourses = malloc(MAX_CLASSES * sizeof(char*));
+  uint16_t *activeCoursesIndexes = malloc(MAX_CLASSES * sizeof(uint16_t));
   uint16_t activeCoursesLen = 0; // also acts as the length of activeCourses
   for (size_t i = 0; i < size_students; i++) {
     for (size_t j = 0; j < students[i].requestsLen; j++) {
@@ -89,6 +89,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
           courses[k].requests++;
           if (courses[k].requests >= MIN_REQ) {
             if (activeCoursesLen == 0) {
+              activeCourses[activeCoursesLen] = malloc(sizeof(char) * MAX_COURSE_NO_LEN);
               strcpy(activeCourses[activeCoursesLen], courses[k].crsNo);
               activeCoursesIndexes[activeCoursesLen] = k;
               activeCoursesLen++;
@@ -102,6 +103,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
               }
 
               if (!exists) {
+                activeCourses[activeCoursesLen] =  malloc(sizeof(char) * MAX_COURSE_NO_LEN);
                 strcpy(activeCourses[activeCoursesLen], courses[k].crsNo);
                 activeCoursesIndexes[activeCoursesLen] = k;
                 activeCoursesLen++;
@@ -399,6 +401,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
   free(currentInserted);
   free(tempStudents);
 
+
   /*** STEP 4 - Insert classes into timetable ***/
   while (activeCoursesLen > 0) {
     // Find highest resource class (most times run)
@@ -410,12 +413,11 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
         index = i;
       }
     }
-    size_t courseIndex = activeCoursesIndexes[index];
 
     // Tally first semester and second semester
     uint8_t allSemesterBlockLens[TOTAL_BLOCKS] = {0};
     for (uint8_t i = 0; i < TOTAL_BLOCKS; i++)
-      allSemesterBlockLens[i] = timetable.timetable[i].numberOfClasses;
+       allSemesterBlockLens[i] = timetable.timetable[i].numberOfClasses;
 
     // If there is more than one class running
     if (allClassRunCounts[index] > 1) {
@@ -433,16 +435,18 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       int offset = 0;
 
       // Disperse classes throughout both semesters
+      // Find base class ID index
       size_t indexOffset = 0;
       size_t baseIndex = 0;
       for (size_t i = 0; i < classesLen; i++) {
-        if (classes[i].baseCrsNo == activeCourses[courseIndex]) {
+        if (strcmp(classes[i].baseCrsNo, activeCourses[index]) == 0) {
           baseIndex = i;
           break;
         }
       }
       uint8_t classRunCounts = allClassRunCounts[index];
       for (size_t i = 0; i < classRunCounts; i++) {
+        // Get class ID
         char className[MAX_COURSE_ID_LEN] = {"\0"};
         strcpy(className, classes[baseIndex + indexOffset].crsNo);
 
@@ -450,6 +454,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
         while (!classInserted) {
           blockIndex += offset;
           
+          // Insert class          
           if (timetable.timetable[blockIndex].numberOfClasses < CLASSROOMS) {
             uint8_t classIndex = timetable.timetable[blockIndex].numberOfClasses;
             strcpy(timetable.timetable[blockIndex].classes[classIndex], className);
@@ -459,8 +464,8 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
             classInserted = true;
           }
 
+          // Update offset and to get index of block for next semester
           offset = stepIndex(offset, step, BLOCKS_PER_SEMESTER);
-        
           if (blockIndex >= (TOTAL_BLOCKS - 1)) {
             blockIndex = step == FirstToSecondSemester ? 0 : BLOCKS_PER_SEMESTER;
             offset = 0;
@@ -480,11 +485,17 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
         }
       }
 
+      // Get class ID index
       char className[MAX_COURSE_ID_LEN] = {"\0"};
       size_t baseIndex = 0;
-      for (size_t i = 0; i < classesLen; i++)
-        if (classes[i].baseCrsNo == activeCourses[courseIndex])
+      for (size_t i = 0; i < classesLen; i++) {
+        if (strcmp(classes[i].baseCrsNo, activeCourses[index]) == 0) {
           baseIndex = i;
+          break;
+        }
+      }
+
+      // Insert class
       strcpy(className, classes[baseIndex].crsNo);
       uint8_t classIndex = timetable.timetable[blockIndex].numberOfClasses;
       strcpy(timetable.timetable[blockIndex].classes[classIndex], className);
@@ -492,34 +503,46 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       allClassRunCounts[index]--;
     }
 
-    if (allClassRunCounts[index] == 0) {
-      activeCoursesLen--;
-      uint8_t *tempAllClassRunCounts = malloc(activeCoursesLen * sizeof(uint8_t));
-      size_t tempIndex = 0;
-      for (size_t i = 0; i <= activeCoursesLen; i++) {
-        if (i != index) {
-          tempAllClassRunCounts[tempIndex] = allClassRunCounts[i];
-          tempIndex++;
-        }
-      }
-      allClassRunCounts = realloc(allClassRunCounts, activeCoursesLen * sizeof(uint8_t));
-      memcpy(allClassRunCounts, tempAllClassRunCounts, activeCoursesLen * sizeof(uint8_t));
-      free(tempAllClassRunCounts);
+    // Now that the classRunCount is 0 since all classes have been inserted into the timetable
+    // delete this course as it has been handled
+    activeCoursesLen--;
+    
+    // create temp arrays of data
+    uint8_t *tempAllClassRunCounts = malloc(activeCoursesLen * sizeof(uint8_t));
+    char **tempActiveCourses = malloc(activeCoursesLen * sizeof(char*));
+    
+    // Copy data without the course we just handled
+    size_t tempIndex = 0;
+    for (size_t i = 0; i <= activeCoursesLen; i++) {
+      if (activeCourses[i] == activeCourses[index]) {
+        free(activeCourses[i]);
+        continue;
+      };
+      
+      tempAllClassRunCounts[tempIndex] = allClassRunCounts[i];
+      tempActiveCourses[tempIndex] = activeCourses[i];
+      tempIndex++;
     }
+
+    // Reallocate the arrays of course data to be 1 less in size and copy temp data back to them, then free temp data
+    allClassRunCounts = realloc(allClassRunCounts, activeCoursesLen * sizeof(uint8_t));
+    activeCourses = realloc(activeCourses, activeCoursesLen * sizeof(char*));
+    memcpy(allClassRunCounts, tempAllClassRunCounts, activeCoursesLen * sizeof(uint8_t));
+    memcpy(activeCourses, tempActiveCourses, activeCoursesLen * sizeof(char*));
+    free(tempAllClassRunCounts);
+    free(tempActiveCourses);
   }
 
-  // // verify step 5 works
-  // for (uint8_t i = 0; i < TOTAL_BLOCKS; i++) {
-  //   for (size_t j = 0; j < timetable.timetable[i].numberOfClasses; j++) {
-  //     printf("Block %d.%ld - %s\n", i + 1, j + 1, timetable.timetable[i].classes[j]);
-  //   }
-  //   printf("-------------------------\n");
-  // }
 
-  // DO MORE ALGORITHM
+  // STEP 5 - something
+
+
+  // STEP 6 - most complex something
+
 
   free(classes);
   free(allClassRunCounts);
+  free(activeCourses);
 
   return timetable;
 }

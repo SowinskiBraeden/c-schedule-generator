@@ -18,7 +18,7 @@
 #define MAX_PUPIL_NUM_LEN 8
 #define MAX_COURSE_DES_LEN 50
 #define MAX_COURSE_NO_LEN 21
-#define MAX_COURSE_ID_LEN MAX_COURSE_NO_LEN + 3 // 3 includes the underscore and the 2 digit unique number to identify the course
+#define MAX_COURSE_ID_LEN MAX_COURSE_NO_LEN + 1
 
 #define TOTAL_BLOCKS 10 // the number of blocks between 2 semesters i.e 8 = 4 blocks per semester, 10 = 5 blocks per semester
 #define MAX_REQUEST_ALTS 6
