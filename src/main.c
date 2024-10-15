@@ -75,7 +75,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
 
 
   /*** STEP 1 - Tally requests to check which courses are eligable to run ***/
-  char **activeCourses = malloc(MAX_CLASSES * sizeof(char*));
+  char **activeCourses = malloc(MAX_CLASSES * sizeof(char *));
   uint16_t *activeCoursesIndexes = malloc(MAX_CLASSES * sizeof(uint16_t));
   uint16_t activeCoursesLen = 0; // also acts as the length of activeCourses
   for (size_t i = 0; i < size_students; i++) {
