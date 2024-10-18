@@ -269,6 +269,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
   classes = realloc(classes, classesLen * sizeof(CLASS));
   memcpy(classes, tempclasses, classesLen * sizeof(CLASS));
   free(tempclasses);
+  free(activeCoursesIndexes);
 
 
   /*** STEP 3 - Insert students into empty classes ... yikes ***/
@@ -588,6 +589,11 @@ int main(int argc, char **argv) {
   if (writeStudentsToJson(students, students_info.numberOfStudents, "output/students.json") == -1) return -1;
   if (writeCoursesToJson(courses, courses_info.numberOfCourses, "output/courses.json") == -1) return -1;
 
+  for (size_t i = 0; i < students_info.numberOfStudents; i++) {
+    free(students[i].requests);
+    free(students[i].schedule);
+    free(students[i].remainingAlts);
+  }
   free(students);
   free(courses);
   
