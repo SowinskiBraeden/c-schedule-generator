@@ -51,16 +51,12 @@ int writeStudentsToJson(STUDENT *students, size_t numberOfStudents, char output_
     fprintf(stream, "    ],\n");
     fprintf(stream, "    \"requestsLen\": %d,\n", students[i].requestsLen);
     
-    if (students[i].classes > 0) {
-      fprintf(stream, "    \"schedule\": [\n");
-      for (size_t j = 0; j < students[i].classes; j++) {
-        fprintf(stream, "      \"%s\"%s\n", students[i].schedule[j], j == students[i].classes - 1 ? "" : ",");
-      }
-      fprintf(stream, "    ],\n");
-    } else {
-      fprintf(stream, "    \"schedule\": [],\n");
+    fprintf(stream, "    \"schedule\": [\n");
+    for (size_t j = 0; j < TOTAL_BLOCKS; j++) {
+      fprintf(stream, "      \"%s\"%s\n", students[i].schedule[j], j == TOTAL_BLOCKS - 1 ? "" : ",");
     }
-
+    fprintf(stream, "    ],\n");
+  
     fprintf(stream, "    \"expectedClasses\": %d,\n", students[i].expectedClasses);
     fprintf(stream, "    \"classes\": %d,\n", students[i].classes);
     

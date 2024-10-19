@@ -53,8 +53,8 @@ STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks, UNIQUE
     REQUEST *requests = malloc(numRequests[i] * sizeof(REQUEST));
     student.requests = requests;
 
-    char **schedule = malloc(TOTAL_BLOCKS * sizeof(int*));
-    student.schedule = schedule;
+    for (uint8_t i = 0; i < TOTAL_BLOCKS; i++)
+      strcpy(student.schedule[i], i < TOTAL_BLOCKS / 2 ? FLEX[0] : FLEX[1]);
 
     REQUEST *remainingAlts = malloc(MAX_REQUEST_ALTS * sizeof(REQUEST));
     student.remainingAlts = remainingAlts;

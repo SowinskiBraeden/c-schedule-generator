@@ -31,4 +31,6 @@
 // 5 is the length of "FALSE" & 3 is the number of commas per line
 #define MAX_CHAR MAX_PUPIL_NUM_LEN + MAX_COURSE_NO_LEN + MAX_COURSE_DES_LEN + 5 + 3
 
+static const char FLEX[][11] = {"XAT--12A-S", "XAT--12B-S"};
+
 #endif

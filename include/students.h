@@ -16,7 +16,7 @@ typedef struct {
   uint32_t pupilNum;
   REQUEST *requests;
   uint8_t requestsLen;
-  char **schedule;
+  char schedule[TOTAL_BLOCKS][MAX_COURSE_ID_LEN];
   uint8_t expectedClasses;
   uint8_t classes;
   REQUEST *remainingAlts;

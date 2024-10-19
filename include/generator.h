@@ -7,15 +7,13 @@
 #ifndef GENERATOR_H_INCLUDED
 #define GENERATOR_H_INCLUDED
 
-const char FLEX[2][11] = {"XAT--12A-S", "XAT--12B-S"};
-
 typedef struct {
   uint8_t numberOfClasses;
-  char classes[CLASSROOMS][MAX_COURSE_ID_LEN];
+  CLASS classes[CLASSROOMS];
 } TIMETABLE_BLOCK;
 
 typedef struct {
-  TIMETABLE_BLOCK timetable[TOTAL_BLOCKS];
+  TIMETABLE_BLOCK blocks[TOTAL_BLOCKS];
   bool success;
 } TIMETABLE;
 

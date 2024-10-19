@@ -57,7 +57,8 @@ int stepIndex(int offset, StepType type, uint8_t blocksPerSemester) {
 }
 
 TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *courses, size_t size_courses) {
-  TIMETABLE_BLOCK defaultBlock = {0, {"\0"}};
+  TIMETABLE_BLOCK defaultBlock;
+  defaultBlock.numberOfClasses = 0;
   TIMETABLE timetable = {{defaultBlock}, false};
 
   uint8_t MEDIAN = floor((float) (MIN_REQ + CLASS_CAP) / 2);
@@ -306,6 +307,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
             // Class exists with room for student
             if (currentInserted[j] < classes[j].numberOfStudents) {
               classes[j].students[currentInserted[j]] = student.pupilNum;
+              student.classes++;
               currentInserted[j]++;
               getAvailableCourse = false;
               break;
@@ -364,12 +366,14 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       }
     }
 
-    // Asign remaining alternates to student
+    // Asign remaining alternates && classes to student
     for (size_t i = 0; i < size_students; i++) {
       if (students[i].pupilNum == student.pupilNum) {
         students[i].remainingAlts = realloc(students[i].remainingAlts, numberOfAlts * sizeof(REQUEST));
         memcpy(students[i].remainingAlts, alternates, numberOfAlts * sizeof(REQUEST));
         students[i].remainingAltsLen = numberOfAlts;
+
+        students[i].classes = student.classes;
         break;
       }
     }
@@ -410,7 +414,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
     // Tally first semester and second semester
     uint8_t allSemesterBlockLens[TOTAL_BLOCKS] = {0};
     for (uint8_t i = 0; i < TOTAL_BLOCKS; i++)
-       allSemesterBlockLens[i] = timetable.timetable[i].numberOfClasses;
+       allSemesterBlockLens[i] = timetable.blocks[i].numberOfClasses;
 
     // If there is more than one class running
     if (allClassRunCounts[index] > 1) {
@@ -439,19 +443,15 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       }
       uint8_t classRunCounts = allClassRunCounts[index];
       for (size_t i = 0; i < classRunCounts; i++) {
-        // Get class ID
-        char className[MAX_COURSE_ID_LEN] = {"\0"};
-        strcpy(className, classes[baseIndex + indexOffset].crsNo);
-
         bool classInserted = false;
         while (!classInserted) {
           blockIndex += offset;
           
           // Insert class          
-          if (timetable.timetable[blockIndex].numberOfClasses < CLASSROOMS) {
-            uint8_t classIndex = timetable.timetable[blockIndex].numberOfClasses;
-            strcpy(timetable.timetable[blockIndex].classes[classIndex], className);
-            timetable.timetable[blockIndex].numberOfClasses++;
+          if (timetable.blocks[blockIndex].numberOfClasses < CLASSROOMS) {
+            uint8_t classIndex = timetable.blocks[blockIndex].numberOfClasses;
+            timetable.blocks[blockIndex].classes[classIndex] = classes[baseIndex + indexOffset];
+            timetable.blocks[blockIndex].numberOfClasses++;
             allClassRunCounts[index]--;
             indexOffset++;
             classInserted = true;
@@ -479,7 +479,6 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       }
 
       // Get class ID index
-      char className[MAX_COURSE_ID_LEN] = {"\0"};
       size_t baseIndex = 0;
       for (size_t i = 0; i < classesLen; i++) {
         if (strcmp(classes[i].baseCrsNo, activeCourses[index]) == 0) {
@@ -489,10 +488,9 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       }
 
       // Insert class
-      strcpy(className, classes[baseIndex].crsNo);
-      uint8_t classIndex = timetable.timetable[blockIndex].numberOfClasses;
-      strcpy(timetable.timetable[blockIndex].classes[classIndex], className);
-      timetable.timetable[blockIndex].numberOfClasses++;
+      uint8_t classIndex = timetable.blocks[blockIndex].numberOfClasses;
+      timetable.blocks[blockIndex].classes[classIndex] = classes[baseIndex];
+      timetable.blocks[blockIndex].numberOfClasses++;
       allClassRunCounts[index]--;
     }
 
@@ -527,7 +525,19 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
   }
 
 
-  // STEP 5 - something
+  // STEP 5 - fill student schedule
+  for (size_t i = 0; i < TOTAL_BLOCKS; i++) {
+    for (size_t j = 0; j < timetable.blocks[i].numberOfClasses; j++) {
+      for (size_t k = 0; k < timetable.blocks[i].classes[j].numberOfStudents; k++) {
+        for (size_t l = 0; l < size_students; l++) {
+          if (students[l].pupilNum == timetable.blocks[i].classes[j].students[k]) {
+            strcpy(students[l].schedule[i], timetable.blocks[i].classes[j].crsNo);
+            break;
+          }
+        }
+      }
+    }
+  }
 
 
   // STEP 6 - most complex something

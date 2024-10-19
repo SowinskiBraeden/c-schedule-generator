@@ -52,7 +52,6 @@ int main(int argc, char **argv) {
 
   for (size_t i = 0; i < students_info.numberOfStudents; i++) {
     free(students[i].requests);
-    free(students[i].schedule);
     free(students[i].remainingAlts);
   }
   free(students);
