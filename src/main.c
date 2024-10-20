@@ -11,7 +11,14 @@
 #include "../include/json.h"
 #include "../include/generator.h"
 
-int main(int argc, char **argv) {
+void handle(void *mem, char name[]) {
+  if (mem == NULL) {
+    fprintf(stderr, "Failed to allocate memory! - Memory: %s\n", name);
+    exit(-1);
+  }
+}
+
+int main(int argc, char *argv[]) {
   /*
     read csv data into array of structs that can
     be processed into an array of student structs

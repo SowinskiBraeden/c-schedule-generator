@@ -33,6 +33,7 @@ UNIQUE_COURSES getNumberOfCourses(CSV_LINE *lines, size_t lines_len) {
 
 COURSE *getCourses(CSV_LINE *lines, size_t lines_len, UNIQUE_COURSES unique_course_info) {
   COURSE *courses = malloc(unique_course_info.numberOfCourses * sizeof(COURSE));
+  handle(courses, "'courses' from getCourses");
   for (size_t i = 0; i < unique_course_info.numberOfCourses; i++) {
     for (size_t j = 0; j < lines_len; j++) {
       if (strcmp(lines[j].crsNo, unique_course_info.uniqueCrsNos[j]) == 0) {

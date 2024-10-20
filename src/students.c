@@ -40,6 +40,7 @@ STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks, UNIQUE
 
   // Create our student array with the correct number of students 
   STUDENT *students = malloc(students_info.numberOfStudents * sizeof(STUDENT));
+  handle(students, "'students' from getStudents");
   for (uint16_t i = 0; i < students_info.numberOfStudents; i++) {
     STUDENT student;
     
@@ -51,12 +52,14 @@ STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks, UNIQUE
     student.remainingAltsLen = 0;
 
     REQUEST *requests = malloc(numRequests[i] * sizeof(REQUEST));
+    handle(requests, "'requests' from getStudents");
     student.requests = requests;
 
     for (uint8_t i = 0; i < TOTAL_BLOCKS; i++)
       strcpy(student.schedule[i], i < TOTAL_BLOCKS / 2 ? FLEX[0] : FLEX[1]);
 
     REQUEST *remainingAlts = malloc(MAX_REQUEST_ALTS * sizeof(REQUEST));
+    handle(remainingAlts, "'remainingAlts' from getStudents");
     student.remainingAlts = remainingAlts;
    
     students[i] = student;

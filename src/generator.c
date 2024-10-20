@@ -68,6 +68,8 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
   /*** STEP 1 - Tally requests to check which courses are eligable to run ***/
   char **activeCourses = malloc(MAX_CLASSES * sizeof(char *));
   uint16_t *activeCoursesIndexes = malloc(MAX_CLASSES * sizeof(uint16_t));
+  handle(activeCourses, "'activeCourses' from generateTimetable");
+  handle(activeCoursesIndexes, "'activeCoursesIndexes' from generateTimetable");
   uint16_t activeCoursesLen = 0; // also acts as the length of activeCourses
   for (size_t i = 0; i < size_students; i++) {
     for (size_t j = 0; j < students[i].requestsLen; j++) {
@@ -79,6 +81,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
           if (courses[k].requests >= MIN_REQ) {
             if (activeCoursesLen == 0) {
               activeCourses[activeCoursesLen] = malloc(sizeof(char) * MAX_COURSE_NO_LEN);
+              handle(activeCourses[activeCoursesLen], "'activeCourses[idx]' from generateTimetable");
               strcpy(activeCourses[activeCoursesLen], courses[k].crsNo);
               activeCoursesIndexes[activeCoursesLen] = k;
               activeCoursesLen++;
@@ -93,6 +96,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
 
               if (!exists) {
                 activeCourses[activeCoursesLen] =  malloc(sizeof(char) * MAX_COURSE_NO_LEN);
+                handle(activeCourses[activeCoursesLen], "'activeCourses[idx]' from generateTimetable");  
                 strcpy(activeCourses[activeCoursesLen], courses[k].crsNo);
                 activeCoursesIndexes[activeCoursesLen] = k;
                 activeCoursesLen++;
@@ -111,6 +115,8 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
   uint8_t *allClassRunCounts = malloc(activeCoursesLen * sizeof(uint8_t));
   // max this out to total number of classrooms available between both semesters
   CLASS *classes = malloc(CLASSROOMS * TOTAL_BLOCKS * sizeof(CLASS));
+  handle(allClassRunCounts, "'allClassRunCounts' from generateTimetable");
+  handle(classes, "'classes' from generateTimetable");
   size_t classesLen = 0;
   for (size_t i = 0; i < activeCoursesLen; i++) {
     uint16_t index = activeCoursesIndexes[i];
@@ -119,6 +125,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
 
     // add 1 to classRunCount in case we need to create an extra class with remaining
     size_t *courseClassIndexes = malloc((classRunCount + 1) * sizeof(size_t));
+    handle(courseClassIndexes, "'courseClassIndexes' from generateTimetable");
     for (size_t j = 0; j < classRunCount; j++) {
       CLASS newClass;
       strcpy(newClass.baseCrsNo, courses[index].crsNo);
@@ -175,6 +182,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
       classRunCount++;
       if (classRunCount >= 2) {
         uint8_t *numberOfStudentsArr = malloc(classRunCount * sizeof(uint8_t));
+        handle(numberOfStudentsArr, "'numberOfStudentsArr' from generateTimetable");
         for (size_t j = 0; j < classRunCount; j++)
           numberOfStudentsArr[j] = classes[courseClassIndexes[j]].numberOfStudents;
 
@@ -213,6 +221,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
 
       // Equalize the class number of students
       uint8_t *numberOfStudentsArr = malloc(classRunCount * sizeof(uint8_t));
+      handle(numberOfStudentsArr, "'numberOfStudentsArr' from generateTimetable");
       for (size_t j = 0; j < classRunCount; j++)
         numberOfStudentsArr[j] = classes[courseClassIndexes[j]].numberOfStudents;
 
@@ -250,21 +259,24 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
   }
 
   // realloc classes to correct size
-  CLASS *tempclasses = malloc(classesLen * sizeof(CLASS));
+  CLASS *tempClasses = malloc(classesLen * sizeof(CLASS));
+  handle(tempClasses, "'tempClasses' from generateTimetable");
   for (size_t i = 0; i < classesLen; i++)
-    tempclasses[i] = classes[i];
+    tempClasses[i] = classes[i];
   classes = realloc(classes, classesLen * sizeof(CLASS));
-  memcpy(classes, tempclasses, classesLen * sizeof(CLASS));
-  free(tempclasses);
+  memcpy(classes, tempClasses, classesLen * sizeof(CLASS));
+  free(tempClasses);
   free(activeCoursesIndexes);
 
 
   /*** STEP 3 - Insert students into empty classes ***/
   STUDENT *tempStudents = malloc(size_students * sizeof(STUDENT));
+  handle(tempStudents, "'tempStudents' from generateTimetable");
   size_t size_tempStudents = size_students;
   memcpy(tempStudents, students, size_students * sizeof(STUDENT));
 
   uint8_t *currentInserted = malloc(classesLen * sizeof(uint8_t));
+  handle(currentInserted, "'currentInserted' from generateTimetable");
   for (size_t i = 0; i < classesLen; i++)
     currentInserted[i] = 0;
 
@@ -279,6 +291,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
         numberOfAlts++;  
  
     REQUEST *alternates = malloc(numberOfAlts * sizeof(REQUEST));
+    handle(alternates, "'alternates' from generateTimetable");
     size_t alternateIdx = 0;
     for (size_t i = 0; i < student.requestsLen; i++) {
       if (student.requests[i].alternate) {
@@ -321,6 +334,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
           
                   // remove alternate from array of alts to retry same alt over and over
                   REQUEST *tempAlternates = malloc(numberOfAlts * sizeof(REQUEST));
+                  handle(tempAlternates, "'tempAlternates' from generateTimetable");
                   memcpy(tempAlternates, alternates, numberOfAlts * sizeof(REQUEST));
                   numberOfAlts--;
           
@@ -347,6 +361,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
               strcpy(course, alternates[0].crsNo); // asign alternate to course and retry
               // remove alternate from array of alts to retry same alt over and over
               REQUEST *tempAlternates = malloc(numberOfAlts * sizeof(REQUEST));
+              handle(tempAlternates, "'tempAlternates' from generateTimetable");
               memcpy(tempAlternates, alternates, numberOfAlts * sizeof(REQUEST));
               numberOfAlts--;
               alternates = realloc(alternates, numberOfAlts * sizeof(REQUEST));
@@ -382,6 +397,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
     // realloc tempStudents to be size_tempStudents - 1 without struct of student just processed
     size_tempStudents--;
     STUDENT *new_tempStudents = malloc(size_tempStudents * sizeof(STUDENT));
+    handle(new_tempStudents, "'new_tempStudents' from generateTimetable");
     size_t idx = 0;
     for (size_t i = 0; i <= size_tempStudents; i++) {
       if (tempStudents[i].pupilNum != student.pupilNum) {
@@ -501,6 +517,8 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
     // create temp arrays of data
     uint8_t *tempAllClassRunCounts = malloc(activeCoursesLen * sizeof(uint8_t));
     char **tempActiveCourses = malloc(activeCoursesLen * sizeof(char*));
+    handle(tempAllClassRunCounts, "'tempAllClassRunCounts' from generateTimetable");
+    handle(tempActiveCourses, "'tempActiveCourses' from generateTimetable");
     
     // Copy data without the course we just handled
     size_t tempIndex = 0;
@@ -540,7 +558,7 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
   }
 
 
-  // STEP 6 - most complex something
+  // STEP 6 - Solve student schedule errors
 
 
   free(classes);

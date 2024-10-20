@@ -36,6 +36,7 @@ CSV_LINE *csvReader(char data_dir[], size_t size) {
   }
 
   CSV_LINE *lines = malloc(size * sizeof(CSV_LINE));
+  handle(lines, "'lines' from csvReader");
 
   char buff[MAX_CHAR];
   int i = 0;
