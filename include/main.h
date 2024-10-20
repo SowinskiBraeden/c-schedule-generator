@@ -35,4 +35,6 @@ static const char FLEX[][11] = {"XAT--12A-S", "XAT--12B-S"};
 
 void handle(void* mem, char name[]);
 
+bool isFlex(char crsNo[MAX_COURSE_NO_LEN]);
+
 #endif

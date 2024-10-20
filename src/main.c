@@ -18,6 +18,12 @@ void handle(void *mem, char name[]) {
   }
 }
 
+bool isFlex(char crsNo[MAX_COURSE_NO_LEN]) {
+  for (uint8_t i = 0; i < sizeof(FLEX)/sizeof(FLEX[0]); i++)
+    if (strcmp(crsNo, FLEX[i]) == 0) return true;
+  return false;
+}
+
 int main(int argc, char *argv[]) {
   /*
     read csv data into array of structs that can

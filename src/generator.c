@@ -10,13 +10,6 @@
 
 const char hex[] = "0123456789abcdefABCDEF";
 
-// May be needed later
-bool isFlex(char crsNo[MAX_COURSE_NO_LEN]) {
-  for (uint8_t i = 0; i < sizeof(FLEX)/sizeof(FLEX[0]); i++)
-    if (strcmp(crsNo, FLEX[i]) == 0) return true;
-  return false;
-}
-
 void appendChar(char *str, char ch) {
   int len = strlen(str);
   str[len] = ch;

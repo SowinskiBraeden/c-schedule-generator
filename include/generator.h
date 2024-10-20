@@ -24,6 +24,4 @@ typedef enum {
 
 TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *courses, size_t size_courses);
 
-bool isFlex(char crsNo[MAX_COURSE_NO_LEN]);
-
 #endif

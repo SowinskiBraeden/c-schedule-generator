@@ -75,6 +75,8 @@ STUDENT *getStudents(CSV_LINE *lines, size_t lines_len, int total_blocks, UNIQUE
         request.alternate = lines[i].alternate;
         students[j].requests[students[j].requestsLen] = request;
         students[j].requestsLen++;
+        if (!isFlex(request.crsNo) && !request.alternate && students[j].expectedClasses < TOTAL_BLOCKS)
+          students[j].expectedClasses++;
         break;
       }
     }
