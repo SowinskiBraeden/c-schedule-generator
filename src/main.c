@@ -24,7 +24,7 @@ bool isFlex(char crsNo[MAX_COURSE_NO_LEN]) {
   return false;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
   /*
     read csv data into array of structs that can
     be processed into an array of student structs

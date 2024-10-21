@@ -6,12 +6,7 @@
 #include "../include/csv.h"
 #include "../include/courses.h"
 
-/*
-  TODO: find a way to make the arr paramter work with any size, i.e char **arr
-  However, when I call this array I can't seem to be able to pass the string array
-  I want without it throwing an error when using char **arr as the parameter
-*/
-bool strInArray(char *str, char arr[MAX_CLASSES][MAX_COURSE_NO_LEN], size_t size) {
+bool courseExists(char *str, char arr[MAX_CLASSES][MAX_COURSE_NO_LEN], size_t size) {
   for (size_t i = 0; i < size; i++)
     if (strcmp(arr[i], str) == 0)
       return true;
@@ -22,7 +17,7 @@ UNIQUE_COURSES getNumberOfCourses(CSV_LINE *lines, size_t lines_len) {
   // Find the number of unique courses and store each unique course no.
   UNIQUE_COURSES unique_course_info = {{{"\0"}}, 0};
   for (size_t i = 0; i < lines_len; i++) {
-    bool exists = strInArray(lines[i].crsNo, unique_course_info.uniqueCrsNos, unique_course_info.numberOfCourses);
+    bool exists = courseExists(lines[i].crsNo, unique_course_info.uniqueCrsNos, unique_course_info.numberOfCourses);
     if (!exists) {
       strcpy(unique_course_info.uniqueCrsNos[unique_course_info.numberOfCourses], lines[i].crsNo);
       unique_course_info.numberOfCourses++;
