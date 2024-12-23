@@ -552,7 +552,6 @@ TIMETABLE generateTimetable(STUDENT *students, size_t size_students, COURSE *cou
 
 
   // STEP 6 - Solve student schedule errors
-  // testing signing key
 
   free(classes);
   free(allClassRunCounts);
